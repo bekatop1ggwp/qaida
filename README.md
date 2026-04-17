@@ -1,4 +1,3 @@
-````md
 # Qaida — local run guide
 
 Проект состоит из 3 частей:
