@@ -1,0 +1,32 @@
+# Flutter
+qaida_front/.dart_tool/
+qaida_front/.flutter-plugins
+qaida_front/.flutter-plugins-dependencies
+qaida_front/.packages
+qaida_front/build/
+
+# Android / IntelliJ
+qaida_front/android/.gradle/
+qaida_front/android/app/debug
+qaida_front/android/app/profile
+qaida_front/android/app/release
+qaida_front/.idea/
+qaida_front/*.iml
+
+# Node / Nest
+qaida_back/node_modules/
+qaida_back/dist/
+qaida_back/.pnpm-store/
+
+# Python
+qaida_back/knn-service/venv/
+qaida_back/knn-service/__pycache__/
+qaida_back/cosine-service/venv/
+qaida_back/cosine-service/__pycache__/
+
+# Env
+qaida_back/src/core/.env
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,28 @@
+version: '3.2'
+services:
+  qaida-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    command: 'pnpm run start:dev'
+    ports:
+      - '8080:8080'
+
+  cosine-service:
+    build:
+      context: ./cosine-service/
+      dockerfile: Dockerfile
+    command: 'python3 main.py'
+    restart: always
+    ports:
+      - '8000:8000'
+
+  knn-service:
+    build:
+      context: './knn-service/'
+      dockerfile: Dockerfile
+    command: 'python3 main.py'
+    restart: always
+    ports:
+      - '8001:8001'
