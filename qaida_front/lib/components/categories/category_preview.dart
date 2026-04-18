@@ -57,6 +57,7 @@ class CategoryPreview extends StatelessWidget {
                 child: GridView.count(
                   scrollDirection: Axis.horizontal,
                   crossAxisCount: 2,
+                  childAspectRatio: 0.82,
                   children: [
                     for (int i = 0; i < 6; i++)
                       PlaceCard(

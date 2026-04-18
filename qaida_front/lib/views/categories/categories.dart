@@ -50,7 +50,8 @@ class Categories extends StatelessWidget {
                   child: GridView.count(
                     scrollDirection: Axis.horizontal,
                     crossAxisCount: 1,
-                    children: [
+                    childAspectRatio: 0.82,
+                    children: [ 
                       for (var place in topPlaces)
                         PlaceCard(place: Map.from(place)),
                     ],

@@ -12,7 +12,11 @@ class PlaceCard extends StatelessWidget {
   final Map? place;
   final bool encoded;
 
-  const PlaceCard({super.key, this.place, this.encoded = false});
+  const PlaceCard({
+    super.key,
+    this.place,
+    this.encoded = false,
+  });
 
   String categories(List categories) {
     try {
@@ -28,19 +32,29 @@ class PlaceCard extends StatelessWidget {
 
   String decode(String ogStr) {
     if (!encoded) return ogStr;
-    List<int> bytes = ogStr.codeUnits;
+    final bytes = ogStr.codeUnits;
     return utf8.decode(bytes);
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = place == null ? 'Хан шатыр' : decode(place!['title'] ?? '');
+    final subtitle = place == null
+        ? 'Торгово-развлекательный центр'
+        : decode(categories(place!['category_id'] ?? []));
+    final address =
+        place == null ? 'Проспект Туран, 37' : decode(place!['address'] ?? '');
+
     return GestureDetector(
       onTap: () async {
         if (place == null) return;
+
         context.read<PlaceProvider>().setId(place!['_id']);
-        final NavigatorState navigator = Navigator.of(context);
-        final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
+        final messenger = ScaffoldMessenger.of(context);
+
         await context.read<HistoryProvider>().addHistory(place?['_id']);
+
         try {
           navigator.push(
             MaterialPageRoute(builder: (_) => const Place()),
@@ -52,37 +66,48 @@ class PlaceCard extends StatelessWidget {
         }
       },
       child: Container(
-        height: 90,
-        margin: const EdgeInsets.all(10.0),
+        margin: const EdgeInsets.all(8),
         child: Material(
-          elevation: 5,
+          elevation: 4,
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PlaceCardImage(place: place),
+              Expanded(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: PlaceCardImage(place: place),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    QText(
-                      text:
-                          place == null ? 'Хан шатыр' : decode(place!['title']),
-                      weight: FontWeight.bold,
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
-                    QText(
-                      text: place == null
-                          ? 'Торгово-развлекательный центр'
-                          : decode(categories(place!['category_id'])),
-                      size: 10,
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
                     ),
-                    QText(
-                      text: place == null
-                          ? 'Проспект Туран, 37'
-                          : decode(place!['address'] ?? ''),
-                      size: 10,
+                    const SizedBox(height: 2),
+                    Text(
+                      address,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
                     ),
                   ],
                 ),

@@ -20,6 +20,7 @@ class CategoryPlaces extends StatelessWidget {
       body: GridView.count(
         padding: const EdgeInsets.all(10.0),
         crossAxisCount: 2,
+        childAspectRatio: 0.82,
         children: [
           for (var place in places) PlaceCard(place: place),
         ],
