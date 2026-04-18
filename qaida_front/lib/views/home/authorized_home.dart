@@ -4,22 +4,45 @@ import 'package:qaida/components/place_card/place_card.dart';
 import 'package:qaida/providers/recommendation.provider.dart';
 import 'package:qaida/providers/user.provider.dart';
 
-class AuthorizedHome extends StatelessWidget {
+class AuthorizedHome extends StatefulWidget {
   const AuthorizedHome({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().myself;
-    final places = context.watch<RecommendationProvider>().places;
+  State<AuthorizedHome> createState() => _AuthorizedHomeState();
+}
 
-    if (user.id == null || user.id.toString().isEmpty) {
+class _AuthorizedHomeState extends State<AuthorizedHome> {
+  Future<void>? _recommendationsFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final userProvider = context.read<UserProvider>();
+    if (!userProvider.hasMyself) return;
+
+    _recommendationsFuture ??= context
+        .read<RecommendationProvider>()
+        .getRecommendedPlaces(userProvider.myself.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final recommendationProvider = context.watch<RecommendationProvider>();
+    final places = recommendationProvider.places;
+
+    if (!userProvider.hasMyself ||
+        userProvider.myself.id == null ||
+        userProvider.myself.id.toString().isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return FutureBuilder(
-      future: context.read<RecommendationProvider>().getRecommendedPlaces(user.id),
+    return FutureBuilder<void>(
+      future: _recommendationsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && places.isEmpty) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            places.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
           return const Center(child: Text('Error'));
@@ -50,7 +73,9 @@ class AuthorizedHome extends StatelessWidget {
                   child: RefreshIndicator(
                     onRefresh: () async {
                       context.read<RecommendationProvider>().clearRecommendations();
-                      await context.read<RecommendationProvider>().getRecommendedPlaces(user.id);
+                      await context
+                          .read<RecommendationProvider>()
+                          .getRecommendedPlaces(userProvider.myself.id);
                     },
                     child: GridView.count(
                       crossAxisCount: 2,
