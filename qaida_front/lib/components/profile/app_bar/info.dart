@@ -38,7 +38,7 @@ class Info extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: InfoButton(
-              icon: Icons.message_outlined,
+              icon: Icons.message,
               text: 'Отзывы',
               count: userProvider.reviewCount,
               page: const Reviews(),

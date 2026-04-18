@@ -11,15 +11,15 @@ class AuthProfileBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       backgroundColor: Colors.white,
       elevation: 0,
-      toolbarHeight: 140,
+      toolbarHeight: 150,
       titleSpacing: 0,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(20),
+          bottom: Radius.circular(20.0),
         ),
       ),
       title: const Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+        padding: EdgeInsets.fromLTRB(20, 10, 20, 0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -30,12 +30,12 @@ class AuthProfileBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       bottom: const PreferredSize(
-        preferredSize: Size.fromHeight(16),
-        child: SizedBox(height: 16),
+        preferredSize: Size.fromHeight(14),
+        child: SizedBox(height: 14),
       ),
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(148);
+  Size get preferredSize => const Size.fromHeight(164);
 }
