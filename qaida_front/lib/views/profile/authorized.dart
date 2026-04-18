@@ -5,6 +5,7 @@ import 'package:qaida/components/light_container.dart';
 import 'package:qaida/components/profile/app_bar/auth_profile_bar.dart';
 import 'package:qaida/components/profile/history.dart';
 import 'package:qaida/providers/user.provider.dart';
+import 'package:qaida/providers/history.provider.dart';
 import 'package:qaida/views/profile/about_us.dart';
 import 'package:qaida/views/profile/favorites.dart';
 import 'package:qaida/views/profile/reviews.dart';
@@ -20,6 +21,7 @@ class Authorized extends StatefulWidget {
 
 class _AuthorizedState extends State<Authorized> {
   Future<void>? _loadFuture;
+  List _history = [];
 
   @override
   void initState() {
@@ -29,8 +31,19 @@ class _AuthorizedState extends State<Authorized> {
 
   Future<void> _loadProfile() async {
     final userProvider = context.read<UserProvider>();
+    final historyProvider = context.read<HistoryProvider>();
+
     await userProvider.getMe();
     await userProvider.fetchVisitedCount();
+
+    try {
+      final history = await historyProvider.getHistory();
+      if (mounted) {
+        setState(() {
+          _history = history;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -50,18 +63,24 @@ class _AuthorizedState extends State<Authorized> {
           backgroundColor: const Color(0xFFF2F3F6),
           appBar: const AuthProfileBar(),
           body: ListView(
-            children: const [
-              History(),
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+            children: [
+              if (_history.isNotEmpty) History(history: _history),
               LightContainer(
-                margin: EdgeInsets.only(top: 20, right: 20, left: 20),
-                children: [
+                margin: EdgeInsets.fromLTRB(
+                  20,
+                  _history.isNotEmpty ? 12 : 8,
+                  20,
+                  12,
+                ),
+                children: const [
                   ForwardButton(text: 'Сохраненные', page: Favorites()),
                   ForwardButton(text: 'Посещенные места', page: Visits()),
                   ForwardButton(text: 'Оставленные отзывы', page: Reviews()),
                 ],
               ),
-              LightContainer(
-                margin: EdgeInsets.all(20.0),
+              const LightContainer(
+                margin: EdgeInsets.fromLTRB(20, 12, 20, 12),
                 children: [
                   ForwardButton(text: 'Настройки', page: Settings()),
                   ForwardButton(text: 'О нас', page: AboutUs()),

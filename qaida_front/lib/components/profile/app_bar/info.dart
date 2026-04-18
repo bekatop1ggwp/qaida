@@ -11,28 +11,41 @@ class Info extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().myself;
-    return Row(
-      children: [
-        InfoButton(
-          icon: Icons.bookmark,
-          text: 'Избранные',
-          count: user.favorites.length,
-          page: const Favorites(),
-        ),
-        InfoButton(
-          icon: Icons.place,
-          text: 'Посетил(-а)',
-          count: context.watch<UserProvider>().visitedCount,
-          page: const Visits(),
-        ),
-        InfoButton(
-          icon: Icons.message,
-          text: 'Отзывы',
-          count: context.watch<UserProvider>().reviewCount,
-          page: const Reviews(),
-        ),
-      ],
+    final userProvider = context.watch<UserProvider>();
+    final user = userProvider.myself;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: InfoButton(
+              icon: Icons.bookmark,
+              text: 'Избранные',
+              count: user.favorites.length,
+              page: const Favorites(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: InfoButton(
+              icon: Icons.place,
+              text: 'Посещенные',
+              count: userProvider.visitedCount,
+              page: const Visits(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: InfoButton(
+              icon: Icons.message_outlined,
+              text: 'Отзывы',
+              count: userProvider.reviewCount,
+              page: const Reviews(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
