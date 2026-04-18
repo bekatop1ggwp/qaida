@@ -175,7 +175,7 @@ export class GetPlacesService {
       {
         $replaceRoot: {
           newRoot: {
-            $mergeObjects: [{ $arrayElemAt: ['$visited_place', 0] }, '$place'],
+            $mergeObjects: ['$place', { $arrayElemAt: ['$visited_place', 0] }],
           },
         },
       },

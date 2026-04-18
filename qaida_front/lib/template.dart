@@ -14,6 +14,7 @@ class Template extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Color(0xFFF2F3F6),
         body: TabBarView(
+          physics: NeverScrollableScrollPhysics(),
           children: [
             Main(),
             Categories(),

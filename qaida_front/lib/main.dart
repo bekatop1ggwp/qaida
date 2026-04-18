@@ -58,8 +58,11 @@ class _MyAppState extends State<MyApp> {
     timer = Timer.periodic(const Duration(seconds: 5), (t) async {
       if (kDebugMode) print('runnin');
       if (context.read<AuthProvider>().isAuthorized) {
-        final userPro = Provider.of<UserProvider>(context, listen: false);
-        final user = userPro.myself;
+        final userPro = context.read<UserProvider>();
+
+        if (!userPro.hasMyself) return;
+
+        final user = userPro.myself!;
         final geoProv = context.read<GeolocationProvider>();
         final location = await context.read<GeolocationProvider>().getLocation();
 

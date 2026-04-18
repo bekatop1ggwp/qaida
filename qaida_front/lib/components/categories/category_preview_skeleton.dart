@@ -22,10 +22,10 @@ class CategoryPreviewSkeleton extends StatelessWidget {
         SizedBox(
           height: 350,
           child: GridView.count(
-            physics: const NeverScrollableScrollPhysics(),
             scrollDirection: Axis.horizontal,
             crossAxisCount: 2,
             childAspectRatio: 0.82,
+            primary: false,
             children: const [
               PlaceCardSkeleton(),
               PlaceCardSkeleton(),
