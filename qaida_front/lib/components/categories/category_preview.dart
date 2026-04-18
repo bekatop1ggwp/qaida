@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/components/all_button.dart';
+import 'package:qaida/components/categories/category_preview_skeleton.dart';
 import 'package:qaida/components/place_card/place_card.dart';
 import 'package:qaida/providers/category.provider.dart';
 import 'package:qaida/views/categories/category_places.dart';
@@ -13,16 +14,25 @@ class CategoryPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categories = context.watch<CategoryProvider>().categories;
+
     return FutureBuilder(
       future: context
           .read<CategoryProvider>()
           .getPlacesByCategories(categories[index]['_id']),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const CategoryPreviewSkeleton();
         } else if (snapshot.hasError) {
           return const Center(child: Text('Error'));
         } else {
+          final places = snapshot.data ?? [];
+
+          if (places.isEmpty) {
+            return const SizedBox.shrink();
+          }
+
+          final previewPlaces = places.take(6).toList();
+
           return Column(
             children: [
               Padding(
@@ -42,7 +52,7 @@ class CategoryPreview extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => CategoryPlaces(
-                              places: snapshot.data!,
+                              places: places,
                               category: categories[index]['name'],
                             ),
                           ),
@@ -59,13 +69,11 @@ class CategoryPreview extends StatelessWidget {
                   crossAxisCount: 2,
                   childAspectRatio: 0.82,
                   children: [
-                    for (int i = 0; i < 6; i++)
-                      PlaceCard(
-                        place: Map.from(snapshot.data![i]),
-                      ),
+                    for (final place in previewPlaces)
+                      PlaceCard(place: Map.from(place)),
                   ],
                 ),
-              )
+              ),
             ],
           );
         }
