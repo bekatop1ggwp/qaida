@@ -4,8 +4,8 @@ import 'package:qaida/components/forward_button.dart';
 import 'package:qaida/components/light_container.dart';
 import 'package:qaida/components/profile/app_bar/auth_profile_bar.dart';
 import 'package:qaida/components/profile/history.dart';
-import 'package:qaida/providers/user.provider.dart';
 import 'package:qaida/providers/history.provider.dart';
+import 'package:qaida/providers/user.provider.dart';
 import 'package:qaida/views/profile/about_us.dart';
 import 'package:qaida/views/profile/favorites.dart';
 import 'package:qaida/views/profile/reviews.dart';
@@ -20,36 +20,37 @@ class Authorized extends StatefulWidget {
 }
 
 class _AuthorizedState extends State<Authorized> {
-  Future<void>? _loadFuture;
-  List _history = [];
+  Future<void>? _profileFuture;
+  Future<void>? _historyFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadFuture = _loadProfile();
+    _profileFuture = _loadProfile();
+    _historyFuture = _loadHistory();
   }
 
   Future<void> _loadProfile() async {
     final userProvider = context.read<UserProvider>();
-    final historyProvider = context.read<HistoryProvider>();
 
-    await userProvider.getMe();
-    await userProvider.fetchVisitedCount();
+    await Future.wait([
+      userProvider.getMe(silent: true),
+      userProvider.fetchVisitedCount(silent: true),
+    ]);
 
-    try {
-      final history = await historyProvider.getHistory();
-      if (mounted) {
-        setState(() {
-          _history = history;
-        });
-      }
-    } catch (_) {}
+    if (mounted) {
+      userProvider.notifyProfileReady();
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    await context.read<HistoryProvider>().loadHistory();
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<void>(
-      future: _loadFuture,
+      future: _profileFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -63,24 +64,33 @@ class _AuthorizedState extends State<Authorized> {
           backgroundColor: const Color(0xFFF2F3F6),
           appBar: const AuthProfileBar(),
           body: ListView(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
             children: [
-              if (_history.isNotEmpty) History(history: _history),
-              LightContainer(
-                margin: EdgeInsets.fromLTRB(
-                  20,
-                  _history.isNotEmpty ? 12 : 8,
-                  20,
-                  12,
-                ),
-                children: const [
+              FutureBuilder<void>(
+                future: _historyFuture,
+                builder: (context, historySnapshot) {
+                  final history = context.watch<HistoryProvider>().history;
+
+                  if (historySnapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox.shrink();
+                  }
+
+                  if (history.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return History(history: history);
+                },
+              ),
+              const LightContainer(
+                margin: EdgeInsets.only(top: 20, right: 20, left: 20),
+                children: [
                   ForwardButton(text: 'Сохраненные', page: Favorites()),
                   ForwardButton(text: 'Посещенные места', page: Visits()),
                   ForwardButton(text: 'Оставленные отзывы', page: Reviews()),
                 ],
               ),
               const LightContainer(
-                margin: EdgeInsets.fromLTRB(20, 12, 20, 12),
+                margin: EdgeInsets.all(20.0),
                 children: [
                   ForwardButton(text: 'Настройки', page: Settings()),
                   ForwardButton(text: 'О нас', page: AboutUs()),

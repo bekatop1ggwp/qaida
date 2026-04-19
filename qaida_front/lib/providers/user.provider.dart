@@ -8,25 +8,28 @@ import 'package:image_picker/image_picker.dart';
 import 'package:qaida/data/user.data.dart';
 
 class UserProvider extends ChangeNotifier {
+  static const _storage = FlutterSecureStorage();
+  static const String _baseUrl = 'http://192.168.8.6:8080';
+
   late User _myself;
   bool _hasMyself = false;
 
   User get myself => _myself;
   bool get hasMyself => _hasMyself;
 
+  bool _isLoadingMyself = false;
+  bool get isLoadingMyself => _isLoadingMyself;
+
   int visitedCount = 0;
   int reviewCount = 0;
   List visitedPlaces = [];
 
-  bool _isLoadingMyself = false;
-  bool get isLoadingMyself => _isLoadingMyself;
-
-  static final FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const String _baseUrl = 'http://192.168.8.6:8080';
-
-  Future<void> getMe() async {
+  /// =========================
+  /// LOAD USER
+  /// =========================
+  Future<void> getMe({bool silent = false}) async {
     _isLoadingMyself = true;
-    notifyListeners();
+    if (!silent) notifyListeners();
 
     try {
       final String? token = await _storage.read(key: 'access_token');
@@ -57,19 +60,14 @@ class UserProvider extends ChangeNotifier {
       rethrow;
     } finally {
       _isLoadingMyself = false;
-      notifyListeners();
+      if (!silent) notifyListeners();
     }
   }
 
-  void clearUser() {
-    _hasMyself = false;
-    visitedCount = 0;
-    reviewCount = 0;
-    visitedPlaces = [];
-    notifyListeners();
-  }
-
-  Future<void> fetchVisitedCount() async {
+  /// =========================
+  /// VISITED / REVIEWS
+  /// =========================
+  Future<void> fetchVisitedCount({bool silent = false}) async {
     try {
       final String? token = await _storage.read(key: 'access_token');
 
@@ -77,7 +75,7 @@ class UserProvider extends ChangeNotifier {
         visitedPlaces = [];
         visitedCount = 0;
         reviewCount = 0;
-        notifyListeners();
+        if (!silent) notifyListeners();
         return;
       }
 
@@ -101,9 +99,10 @@ class UserProvider extends ChangeNotifier {
       }).toList();
 
       visitedCount = visited.length;
-      reviewCount = visited.where((visit) => visit['status'] == 'VISITED').length;
+      reviewCount =
+          visited.where((visit) => visit['status'] == 'VISITED').length;
 
-      notifyListeners();
+      if (!silent) notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('fetchVisitedCount error: $e');
@@ -112,6 +111,27 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// =========================
+  /// FINAL NOTIFY (важно для оптимизации)
+  /// =========================
+  void notifyProfileReady() {
+    notifyListeners();
+  }
+
+  /// =========================
+  /// CLEAR USER
+  /// =========================
+  void clearUser() {
+    _hasMyself = false;
+    visitedCount = 0;
+    reviewCount = 0;
+    visitedPlaces = [];
+    notifyListeners();
+  }
+
+  /// =========================
+  /// UPDATE USER
+  /// =========================
   Future<void> changeUser(User user, bool deactivate) async {
     try {
       final String? token = await _storage.read(key: 'access_token');
@@ -143,11 +163,14 @@ class UserProvider extends ChangeNotifier {
       _myself = user;
       _hasMyself = true;
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
       rethrow;
     }
   }
 
+  /// =========================
+  /// AVATAR
+  /// =========================
   Future<void> changeAvatar() async {
     try {
       final token = await _storage.read(key: 'access_token');
@@ -165,7 +188,9 @@ class UserProvider extends ChangeNotifier {
       );
 
       request.headers.addAll({'Authorization': 'Bearer $token'});
-      request.files.add(await http.MultipartFile.fromPath('image', file.path));
+      request.files.add(
+        await http.MultipartFile.fromPath('image', file.path),
+      );
 
       final response = await request.send();
 
@@ -182,6 +207,9 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// =========================
+  /// FAVORITES
+  /// =========================
   Future<List> getFavPlaces() async {
     try {
       if (!_hasMyself) return [];
@@ -193,7 +221,8 @@ class UserProvider extends ChangeNotifier {
           Uri.parse('$_baseUrl/api/place/place/${place['_id']}'),
         );
 
-        if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.statusCode >= 200 &&
+            response.statusCode < 300) {
           favPlaces.add(jsonDecode(response.body));
         }
       }
@@ -230,7 +259,8 @@ class UserProvider extends ChangeNotifier {
         );
       }
 
-      final favIds = favorites.map((favPlace) => favPlace['_id']).toList();
+      final favIds =
+          favorites.map((favPlace) => favPlace['_id']).toList();
 
       final response = await http.put(
         Uri.parse('$_baseUrl/api/user/favorites'),
