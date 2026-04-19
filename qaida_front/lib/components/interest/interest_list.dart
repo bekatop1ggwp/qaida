@@ -5,37 +5,67 @@ import 'package:qaida/components/interest/interest_item/interest_item.dart';
 import 'package:qaida/providers/interests.provider.dart';
 import 'package:qaida/providers/user.provider.dart';
 
-class InterestList extends StatelessWidget {
+class InterestList extends StatefulWidget {
   const InterestList({super.key});
+
+  @override
+  State<InterestList> createState() => _InterestListState();
+}
+
+class _InterestListState extends State<InterestList> {
+  late Future<void> _future;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _future = _init();
+  }
+
+  Future<void> _init() async {
+    final interestsProvider = context.read<InterestsProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    await interestsProvider.fetchInterests();
+
+    if (userProvider.hasMyself) {
+      interestsProvider.applyUserInterests(userProvider.myself.interests);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: FutureBuilder(
-        future: context.read<InterestsProvider>().fetchInterests(),
+      child: FutureBuilder<void>(
+        future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Ошибка. Попробуйте позже')),
-            );
-            Navigator.of(context).pop();
-            return Container();
-          } else {
-            try {
-              final user = context.watch<UserProvider>().myself;
-              context
-                  .read<InterestsProvider>()
-                  .getUserInterests(user.interests);
-            } catch (e) {
-              if (kDebugMode) print(e);
-            }
-            return ListView.builder(
-              itemCount: context.watch<InterestsProvider>().interests.length,
-              itemBuilder: (_, index) => InterestItem(index: index),
-            );
           }
+
+          if (snapshot.hasError) {
+            if (kDebugMode) {
+              print(snapshot.error);
+            }
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ошибка. Попробуйте позже'),
+                ),
+              );
+              Navigator.of(context).pop();
+            });
+
+            return const SizedBox.shrink();
+          }
+
+          final provider = context.watch<InterestsProvider>();
+
+          return ListView.builder(
+            itemCount: provider.interests.length,
+            itemBuilder: (_, index) => InterestItem(index: index),
+          );
         },
       ),
     );

@@ -4,21 +4,26 @@ import 'package:provider/provider.dart';
 import 'package:qaida/providers/interests.provider.dart';
 import 'package:qaida/providers/template.provider.dart';
 import 'package:qaida/providers/theme.provider.dart';
+import 'package:qaida/providers/user.provider.dart';
 
 class ActionButtons extends StatelessWidget {
   const ActionButtons({super.key});
 
   Future<void> handleSend(BuildContext context) async {
-    List<String> interests = context.read<InterestsProvider>().getSelectedIds();
+    final selectedIds = context.read<InterestsProvider>().getSelectedIds();
 
     const storage = FlutterSecureStorage();
-    String? token = await storage.read(key: 'access_token');
+    final token = await storage.read(key: 'access_token');
 
-    await context.read<InterestsProvider>().sendInterests(token!, interests);
+    if (token == null || token.isEmpty) {
+      throw Exception('Access token not found');
+    }
+
+    await context.read<InterestsProvider>().sendInterests(token, selectedIds);
+    await context.read<UserProvider>().getMe();
   }
 
   void navToHome(BuildContext context) {
-    Navigator.pop(context);
     Navigator.pop(context);
     context.read<TemplateProvider>().changeTemplatePage(0);
   }
@@ -26,7 +31,7 @@ class ActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: <Widget>[
+      children: [
         Expanded(
           child: Container(
             margin: const EdgeInsets.all(10.0),
@@ -40,7 +45,10 @@ class ActionButtons extends StatelessWidget {
                   context.read<ThemeProvider>().lightBlack,
                 ),
               ),
-              child: const Text('Пропустить', style: TextStyle(fontSize: 15)),
+              child: const Text(
+                'Пропустить',
+                style: TextStyle(fontSize: 15),
+              ),
             ),
           ),
         ),
@@ -56,10 +64,31 @@ class ActionButtons extends StatelessWidget {
                 foregroundColor: WidgetStateProperty.all(Colors.white),
               ),
               onPressed: () async {
-                await handleSend(context);
-                navToHome(context);
+                try {
+                  await handleSend(context);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Интересы обновлены'),
+                      ),
+                    );
+                    navToHome(context);
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Не удалось сохранить интересы: $e'),
+                      ),
+                    );
+                  }
+                }
               },
-              child: const Text('Далее', style: TextStyle(fontSize: 15)),
+              child: const Text(
+                'Далее',
+                style: TextStyle(fontSize: 15),
+              ),
             ),
           ),
         ),

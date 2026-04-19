@@ -128,22 +128,19 @@ export class UserService {
 
   public async insertInterests(payload: ObjectId[], user_id: ObjectId) {
     const existCategories = await this.rubric.find({
-      _id: {
-        $in: payload,
-      },
+      _id: { $in: payload },
     });
 
-    if (!existCategories)
+    if (existCategories.length !== payload.length) {
       throw new MethodNotAllowedException('Значения не допустимы');
+    }
 
     const user = await this.user.findOne({ _id: user_id });
     if (!user) throw new UnauthorizedException('Пользователь не найден');
 
     return await this.updateUserInDB(
       {
-        $addToSet: {
-          interests: payload,
-        },
+        interests: payload,
       },
       user_id,
     );
