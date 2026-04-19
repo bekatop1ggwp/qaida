@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/components/profile/app_bar/info_button.dart';
+import 'package:qaida/components/profile/app_bar/info_button_skeleton.dart';
 import 'package:qaida/providers/user.provider.dart';
 import 'package:qaida/views/profile/favorites.dart';
 import 'package:qaida/views/profile/reviews.dart';
@@ -14,9 +15,17 @@ class Info extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
 
     if (!userProvider.hasMyself) {
-      return const SizedBox(
-        height: 74,
-        child: SizedBox.shrink(),
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            Expanded(child: InfoButtonSkeleton()),
+            SizedBox(width: 8),
+            Expanded(child: InfoButtonSkeleton()),
+            SizedBox(width: 8),
+            Expanded(child: InfoButtonSkeleton()),
+          ],
+        ),
       );
     }
 

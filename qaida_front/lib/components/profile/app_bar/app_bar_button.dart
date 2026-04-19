@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qaida/components/profile/app_bar/app_bar_button_skeleton.dart';
 import 'package:qaida/providers/user.provider.dart';
 
 class AppBarButton extends StatelessWidget {
   const AppBarButton({super.key});
 
-  String fullName(String name, String surname, String email) {
-    final full = '$name $surname'.trim();
+  String fullName(String? name, String? surname, String? email) {
+    final full = '${name ?? ''} ${surname ?? ''}'.trim();
     if (full.isNotEmpty) return full;
-    return email;
+    return email ?? 'Профиль';
   }
 
   @override
@@ -16,20 +17,7 @@ class AppBarButton extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
 
     if (!userProvider.hasMyself) {
-      return const SizedBox(
-        height: 28,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Профиль',
-            style: TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF243B63),
-            ),
-          ),
-        ),
-      );
+      return const AppBarButtonSkeleton();
     }
 
     final user = userProvider.myself;
