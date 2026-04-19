@@ -1,105 +1,87 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:qaida/components/forward_button.dart';
-import 'package:qaida/components/light_container.dart';
-import 'package:qaida/components/profile/app_bar/auth_profile_bar.dart';
-import 'package:qaida/components/profile/history.dart';
-import 'package:qaida/providers/history.provider.dart';
-import 'package:qaida/providers/user.provider.dart';
-import 'package:qaida/views/profile/about_us.dart';
-import 'package:qaida/views/profile/favorites.dart';
-import 'package:qaida/views/profile/reviews.dart';
-import 'package:qaida/views/profile/settings/settings.dart';
-import 'package:qaida/views/profile/visits.dart';
+import 'dart:convert';
 
-class Authorized extends StatefulWidget {
-  const Authorized({super.key});
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
-  @override
-  State<Authorized> createState() => _AuthorizedState();
-}
+class HistoryProvider extends ChangeNotifier {
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const String _baseUrl = 'http://192.168.8.6:8080';
 
-class _AuthorizedState extends State<Authorized> {
-  Future<void>? _profileFuture;
-  Future<void>? _historyFuture;
+  final Map<String, Map<String, dynamic>> _placesCache = {};
+  List<Map<String, dynamic>> history = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _profileFuture = _loadProfile();
-    _historyFuture = _loadHistory();
+  Future<Map<String, dynamic>> getPlaceById(String id) async {
+    if (_placesCache.containsKey(id)) {
+      return _placesCache[id]!;
+    }
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/place/place/$id'),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to load place $id: ${response.statusCode}');
+    }
+
+    final place = Map<String, dynamic>.from(jsonDecode(response.body));
+    _placesCache[id] = place;
+    return place;
   }
 
-  Future<void> _loadProfile() async {
-    final userProvider = context.read<UserProvider>();
+  Future<List<String>> _getHistoryIds() async {
+    final bool hasHistory = await _storage.containsKey(key: 'history');
+    if (!hasHistory) return [];
 
-    await Future.wait([
-      userProvider.getMe(silent: true),
-      userProvider.fetchVisitedCount(silent: true),
-    ]);
+    final String? historyJson = await _storage.read(key: 'history');
+    if (historyJson == null || historyJson.isEmpty) return [];
 
-    if (mounted) {
-      userProvider.notifyProfileReady();
+    return List<String>.from(jsonDecode(historyJson));
+  }
+
+  Future<void> loadHistory() async {
+    final ids = await _getHistoryIds();
+
+    if (ids.isEmpty) {
+      history = [];
+      notifyListeners();
+      return;
+    }
+
+    final places = await Future.wait(
+      ids.map((id) => getPlaceById(id)),
+    );
+
+    history = places;
+    notifyListeners();
+  }
+
+  Future<void> addHistory(String placeId) async {
+    List<String> ids = await _getHistoryIds();
+
+    ids.remove(placeId);
+    ids = [placeId, ...ids];
+
+    if (ids.length > 5) {
+      ids = ids.take(5).toList();
+    }
+
+    await _storage.write(
+      key: 'history',
+      value: jsonEncode(ids),
+    );
+
+    if (_placesCache.containsKey(placeId)) {
+      final cachedPlace = _placesCache[placeId]!;
+      history.removeWhere((place) => place['_id'] == placeId);
+      history = [cachedPlace, ...history].take(5).toList();
+      notifyListeners();
     }
   }
 
-  Future<void> _loadHistory() async {
-    await context.read<HistoryProvider>().loadHistory();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _profileFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return const Center(child: Text('Ошибка загрузки профиля'));
-        }
-
-        return Scaffold(
-          backgroundColor: const Color(0xFFF2F3F6),
-          appBar: const AuthProfileBar(),
-          body: ListView(
-            children: [
-              FutureBuilder<void>(
-                future: _historyFuture,
-                builder: (context, historySnapshot) {
-                  final history = context.watch<HistoryProvider>().history;
-
-                  if (historySnapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox.shrink();
-                  }
-
-                  if (history.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return History(history: history);
-                },
-              ),
-              const LightContainer(
-                margin: EdgeInsets.only(top: 20, right: 20, left: 20),
-                children: [
-                  ForwardButton(text: 'Сохраненные', page: Favorites()),
-                  ForwardButton(text: 'Посещенные места', page: Visits()),
-                  ForwardButton(text: 'Оставленные отзывы', page: Reviews()),
-                ],
-              ),
-              const LightContainer(
-                margin: EdgeInsets.all(20.0),
-                children: [
-                  ForwardButton(text: 'Настройки', page: Settings()),
-                  ForwardButton(text: 'О нас', page: AboutUs()),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  void clearHistoryCache() {
+    _placesCache.clear();
+    history = [];
+    notifyListeners();
   }
 }

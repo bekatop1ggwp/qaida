@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:qaida/data/user.data.dart';
 
 class UserProvider extends ChangeNotifier {
-  static const _storage = FlutterSecureStorage();
+  static final FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _baseUrl = 'http://192.168.8.6:8080';
 
   late User _myself;
@@ -24,9 +24,6 @@ class UserProvider extends ChangeNotifier {
   int reviewCount = 0;
   List visitedPlaces = [];
 
-  /// =========================
-  /// LOAD USER
-  /// =========================
   Future<void> getMe({bool silent = false}) async {
     _isLoadingMyself = true;
     if (!silent) notifyListeners();
@@ -64,9 +61,6 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// =========================
-  /// VISITED / REVIEWS
-  /// =========================
   Future<void> fetchVisitedCount({bool silent = false}) async {
     try {
       final String? token = await _storage.read(key: 'access_token');
@@ -111,16 +105,10 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// =========================
-  /// FINAL NOTIFY (важно для оптимизации)
-  /// =========================
   void notifyProfileReady() {
     notifyListeners();
   }
 
-  /// =========================
-  /// CLEAR USER
-  /// =========================
   void clearUser() {
     _hasMyself = false;
     visitedCount = 0;
@@ -129,9 +117,6 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// =========================
-  /// UPDATE USER
-  /// =========================
   Future<void> changeUser(User user, bool deactivate) async {
     try {
       final String? token = await _storage.read(key: 'access_token');
@@ -163,21 +148,17 @@ class UserProvider extends ChangeNotifier {
       _myself = user;
       _hasMyself = true;
       notifyListeners();
-    } catch (e) {
+    } catch (_) {
       rethrow;
     }
   }
 
-  /// =========================
-  /// AVATAR
-  /// =========================
   Future<void> changeAvatar() async {
     try {
       final token = await _storage.read(key: 'access_token');
 
       final picker = ImagePicker();
       final image = await picker.pickImage(source: ImageSource.gallery);
-
       if (image == null) return;
 
       final file = File(image.path);
@@ -188,28 +169,21 @@ class UserProvider extends ChangeNotifier {
       );
 
       request.headers.addAll({'Authorization': 'Bearer $token'});
-      request.files.add(
-        await http.MultipartFile.fromPath('image', file.path),
-      );
+      request.files.add(await http.MultipartFile.fromPath('image', file.path));
 
       final response = await request.send();
 
       if (response.statusCode > 300) {
         throw Exception('${response.statusCode}: ${response.reasonPhrase}');
-      } else {
-        await getMe();
       }
+
+      await getMe();
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
+      if (kDebugMode) print(e);
       rethrow;
     }
   }
 
-  /// =========================
-  /// FAVORITES
-  /// =========================
   Future<List> getFavPlaces() async {
     try {
       if (!_hasMyself) return [];
@@ -221,17 +195,14 @@ class UserProvider extends ChangeNotifier {
           Uri.parse('$_baseUrl/api/place/place/${place['_id']}'),
         );
 
-        if (response.statusCode >= 200 &&
-            response.statusCode < 300) {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
           favPlaces.add(jsonDecode(response.body));
         }
       }
 
       return favPlaces;
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
+      if (kDebugMode) print(e);
       rethrow;
     }
   }
@@ -259,8 +230,7 @@ class UserProvider extends ChangeNotifier {
         );
       }
 
-      final favIds =
-          favorites.map((favPlace) => favPlace['_id']).toList();
+      final favIds = favorites.map((favPlace) => favPlace['_id']).toList();
 
       final response = await http.put(
         Uri.parse('$_baseUrl/api/user/favorites'),
@@ -279,9 +249,7 @@ class UserProvider extends ChangeNotifier {
 
       await getMe();
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
+      if (kDebugMode) print(e);
       rethrow;
     }
   }

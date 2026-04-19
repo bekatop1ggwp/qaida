@@ -64,6 +64,7 @@ class _AuthorizedState extends State<Authorized> {
           backgroundColor: const Color(0xFFF2F3F6),
           appBar: const AuthProfileBar(),
           body: ListView(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
             children: [
               FutureBuilder<void>(
                 future: _historyFuture,
@@ -82,7 +83,7 @@ class _AuthorizedState extends State<Authorized> {
                 },
               ),
               const LightContainer(
-                margin: EdgeInsets.only(top: 20, right: 20, left: 20),
+                margin: EdgeInsets.fromLTRB(20, 8, 20, 12),
                 children: [
                   ForwardButton(text: 'Сохраненные', page: Favorites()),
                   ForwardButton(text: 'Посещенные места', page: Visits()),
@@ -90,7 +91,7 @@ class _AuthorizedState extends State<Authorized> {
                 ],
               ),
               const LightContainer(
-                margin: EdgeInsets.all(20.0),
+                margin: EdgeInsets.fromLTRB(20, 0, 20, 16),
                 children: [
                   ForwardButton(text: 'Настройки', page: Settings()),
                   ForwardButton(text: 'О нас', page: AboutUs()),
