@@ -37,6 +37,30 @@ def decimal_to_float(value, default=0.0):
         return default
 
 
+def jaccard_similarity(set_a, set_b):
+    if not set_a and not set_b:
+        return 0.0
+    intersection = len(set_a & set_b)
+    union = len(set_a | set_b)
+    if union == 0:
+        return 0.0
+    return intersection / union
+
+
+def normalize_scores(score_map):
+    if not score_map:
+        return {}
+
+    values = list(score_map.values())
+    min_v = min(values)
+    max_v = max(values)
+
+    if max_v == min_v:
+        return {k: 1.0 for k in score_map.keys()}
+
+    return {k: (v - min_v) / (max_v - min_v) for k, v in score_map.items()}
+
+
 def get_user_data_by_id(user_id):
     users_collection = db["users"]
 
@@ -173,18 +197,15 @@ def generate_place_category_vector(place_categories, all_minor_categories, place
 
     total_minor = len(all_minor_categories) if all_minor_categories else 1
     global_count = len(global_category_ids)
-
-    global_weight = 1 - (global_count / total_minor)
-    if global_weight < 0:
-        global_weight = 0
+    global_weight = max(0.0, 1 - (global_count / total_minor))
 
     for category_id in all_minor_categories:
         if category_id in place_category_set:
-            place_category_vector.append(1)
+            place_category_vector.append(1.0)
         elif category_id in global_category_ids:
             place_category_vector.append(global_weight)
         else:
-            place_category_vector.append(0)
+            place_category_vector.append(0.0)
 
     return place_category_vector
 
@@ -207,8 +228,10 @@ def generate_place_feature_map(places, all_minor_categories):
             )
 
             place_score = decimal_to_float(place.get("score_2gis", 0), 0.0)
+
             feature_map[place_id] = {
-                "vector": category_vector + [place_score],
+                "vector": category_vector,
+                "rating": place_score,
                 "place": place,
             }
         except Exception as e:
@@ -217,138 +240,154 @@ def generate_place_feature_map(places, all_minor_categories):
     return feature_map
 
 
-def calculate_euclidean_distance(user_vector, place_vector):
-    user_features = np.array(user_vector, dtype=float)
-    place_features = np.array(place_vector[:-1], dtype=float)
-    place_score = float(place_vector[-1])
+def calculate_content_similarity(user_vector, place_vector):
+    user_arr = np.array(user_vector, dtype=float)
+    place_arr = np.array(place_vector, dtype=float)
 
-    if len(user_features) != len(place_features):
-        min_len = min(len(user_features), len(place_features))
-        user_features = user_features[:min_len]
-        place_features = place_features[:min_len]
+    if len(user_arr) != len(place_arr):
+        min_len = min(len(user_arr), len(place_arr))
+        user_arr = user_arr[:min_len]
+        place_arr = place_arr[:min_len]
 
-    # У пользователя отдельного score нет, поэтому сравниваем только категориальную часть
-    distance = np.linalg.norm(user_features - place_features)
+    user_norm = np.linalg.norm(user_arr)
+    place_norm = np.linalg.norm(place_arr)
 
-    # Можно слегка учитывать рейтинг места как бонус/штраф
-    # Чем выше rating, тем чуть лучше итог
-    rating_penalty = max(0.0, 5.0 - place_score) * 0.05
+    if user_norm == 0 or place_norm == 0:
+        return 0.0
 
-    return float(distance + rating_penalty)
+    cosine_sim = float(np.dot(user_arr, place_arr) / (user_norm * place_norm))
+    return max(0.0, cosine_sim)
 
 
-def get_users_with_similar_interests(user_interests, target_user_id):
+def get_top_similar_users(user_interests, target_user_id, top_n=30, min_similarity=0.2):
     users_collection = db["users"]
-    similar_users = []
 
-    interest_object_ids = [to_object_id(interest) for interest in user_interests]
-    provided_interest_set = set(to_str_id(interest) for interest in interest_object_ids)
-
-    if not provided_interest_set:
+    target_interest_set = set(to_str_id(interest) for interest in user_interests)
+    if not target_interest_set:
         return []
 
-    query = {
-        "_id": {"$ne": to_object_id(target_user_id)},
-        "interests": {"$size": len(interest_object_ids)},
-    }
+    users = list(
+        users_collection.find(
+            {"_id": {"$ne": to_object_id(target_user_id)}},
+            {"interests": 1}
+        )
+    )
 
-    users = list(users_collection.find(query, {"interests": 1}))
+    scored_users = []
     for user in users:
         user_interest_set = set(to_str_id(interest) for interest in user.get("interests", []))
-        if user_interest_set == provided_interest_set:
-            similar_users.append(user)
+        similarity = jaccard_similarity(target_interest_set, user_interest_set)
 
-    return similar_users
+        if similarity >= min_similarity:
+            scored_users.append({
+                "user_id": to_str_id(user["_id"]),
+                "similarity": similarity,
+            })
+
+    scored_users.sort(key=lambda x: x["similarity"], reverse=True)
+    return scored_users[:top_n]
 
 
-def rank_candidate_places(candidate_place_ids, place_frequency, place_feature_map, user_vector):
-    ranked = []
+def build_collaborative_scores(similar_users, user_visited_set):
+    collaborative_scores = {}
+
+    for similar_user in similar_users:
+        sim_user_id = similar_user["user_id"]
+        sim_weight = similar_user["similarity"]
+
+        visited_places = get_visited_places_by_user(sim_user_id)
+
+        unique_places = set(visited_places)
+        for place_id in unique_places:
+            if place_id in user_visited_set:
+                continue
+
+            collaborative_scores[place_id] = collaborative_scores.get(place_id, 0.0) + sim_weight
+
+    return collaborative_scores
+
+
+def build_content_scores(candidate_place_ids, place_feature_map, user_vector):
+    content_scores = {}
 
     for place_id in candidate_place_ids:
-        feature_entry = place_feature_map.get(place_id)
-        if not feature_entry:
+        place_data = place_feature_map.get(place_id)
+        if not place_data:
             continue
 
-        distance = calculate_euclidean_distance(user_vector, feature_entry["vector"])
-        frequency = place_frequency.get(place_id, 0)
+        similarity = calculate_content_similarity(user_vector, place_data["vector"])
 
-        # Сортируем в первую очередь по частоте среди similar users,
-        # затем по близости к интересам пользователя.
-        ranked.append(
-            {
-                "place_id": place_id,
-                "frequency": frequency,
-                "distance": distance,
-            }
-        )
+        # Лёгкий бонус за рейтинг 2GIS
+        rating_bonus = min(place_data["rating"] / 5.0, 1.0) * 0.15
 
-    ranked.sort(key=lambda x: (-x["frequency"], x["distance"]))
+        content_scores[place_id] = similarity + rating_bonus
+
+    return content_scores
+
+
+def rank_places(collaborative_scores, content_scores, alpha=0.65, beta=0.35):
+    norm_collab = normalize_scores(collaborative_scores)
+    norm_content = normalize_scores(content_scores)
+
+    all_place_ids = set(norm_collab.keys()) | set(norm_content.keys())
+
+    ranked = []
+    for place_id in all_place_ids:
+        collab = norm_collab.get(place_id, 0.0)
+        content = norm_content.get(place_id, 0.0)
+        final_score = alpha * collab + beta * content
+
+        ranked.append({
+            "place_id": place_id,
+            "collaborative_score": collab,
+            "content_score": content,
+            "final_score": final_score,
+        })
+
+    ranked.sort(key=lambda x: x["final_score"], reverse=True)
     return ranked
 
 
-def find_k_nearest_neighbors_for_user(user_id, k):
+def find_k_recommendations_for_user(user_id, k):
     user_name, user_interests, user_minor_categories, user_visited_places = get_user_data_by_id(user_id)
 
-    if not user_name:
-        print("User not found.")
+    if not user_name or not user_interests:
         return []
 
-    if not user_interests:
-        print("User has no interests.")
-        return []
-
-    similar_users = get_users_with_similar_interests(user_interests, user_id)
-    if not similar_users:
-        print("No users with similar interests found.")
-        return []
-
-    visited_places_by_similar_users = []
-    for similar_user in similar_users:
-        similar_user_id = similar_user["_id"]
-        visited_places = get_visited_places_by_user(similar_user_id)
-        visited_places_by_similar_users.extend(visited_places)
-
-    if not visited_places_by_similar_users:
-        print("No visited places by similar users found.")
-        return []
-
-    # Частота посещений similar users
-    place_frequency = {}
-    for place_id in visited_places_by_similar_users:
-        place_frequency[place_id] = place_frequency.get(place_id, 0) + 1
-
-    # Убираем уже посещённые target user места
     user_visited_set = set(user_visited_places)
-    candidate_place_ids = [
-        place_id for place_id in place_frequency.keys()
-        if place_id not in user_visited_set
-    ]
 
-    if not candidate_place_ids:
-        print("No candidate places left after excluding user's visited places.")
+    similar_users = get_top_similar_users(
+        user_interests=user_interests,
+        target_user_id=user_id,
+        top_n=30,
+        min_similarity=0.2,
+    )
+    if not similar_users:
         return []
 
-    user_interest_vector, all_minor_categories = generate_user_interest_vector(user_minor_categories)
+    collaborative_scores = build_collaborative_scores(similar_users, user_visited_set)
+    if not collaborative_scores:
+        return []
+
+    user_vector, all_minor_categories = generate_user_interest_vector(user_minor_categories)
     places_for_user = get_places_for_user(user_minor_categories)
     place_feature_map = generate_place_feature_map(places_for_user, all_minor_categories)
 
-    ranked_places = rank_candidate_places(
-        candidate_place_ids=candidate_place_ids,
-        place_frequency=place_frequency,
-        place_feature_map=place_feature_map,
-        user_vector=user_interest_vector,
+    candidate_place_ids = list(collaborative_scores.keys())
+    content_scores = build_content_scores(candidate_place_ids, place_feature_map, user_vector)
+
+    ranked_places = rank_places(
+        collaborative_scores=collaborative_scores,
+        content_scores=content_scores,
+        alpha=0.65,
+        beta=0.35,
     )
 
-    nearest_places_with_distances = [
-        (item["place_id"], item["distance"]) for item in ranked_places[:k]
-    ]
-
-    return nearest_places_with_distances
+    return [item["place_id"] for item in ranked_places[:k]]
 
 
 def getPlacesByIds(ids):
     object_ids = [to_object_id(place_id) for place_id in ids]
-    places = []
     places_cursor = db["places"].find({"_id": {"$in": object_ids}})
 
     places_map = {}
@@ -365,16 +404,14 @@ def getPlacesByIds(ids):
 
         places_map[place["_id"]] = place
 
-    # сохраняем порядок рекомендаций
+    ordered_places = []
     for place_id in ids:
         if place_id in places_map:
-            places.append(places_map[place_id])
+            ordered_places.append(places_map[place_id])
 
-    return places
+    return ordered_places
 
 
 def generateRecommendation(user_id):
-    nearest_places_with_distances = find_k_nearest_neighbors_for_user(user_id, 10)
-    nearest_place_ids = [place_id for place_id, _ in nearest_places_with_distances]
-    places = getPlacesByIds(nearest_place_ids)
-    return places
+    recommended_ids = find_k_recommendations_for_user(user_id, 10)
+    return getPlacesByIds(recommended_ids)
