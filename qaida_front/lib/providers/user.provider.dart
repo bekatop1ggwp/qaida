@@ -11,6 +11,11 @@ class UserProvider extends ChangeNotifier {
   static final FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _baseUrl = 'http://192.168.8.6:8080';
 
+  static const String _cachedUserKey = 'cached_user';
+  static const String _cachedVisitedCountKey = 'cached_visited_count';
+  static const String _cachedReviewCountKey = 'cached_review_count';
+  static const String _cachedVisitedPlacesKey = 'cached_visited_places';
+
   late User _myself;
   bool _hasMyself = false;
 
@@ -23,6 +28,90 @@ class UserProvider extends ChangeNotifier {
   int visitedCount = 0;
   int reviewCount = 0;
   List visitedPlaces = [];
+
+  Future<void> loadCachedProfile() async {
+    final sw = Stopwatch()..start();
+
+    try {
+      final cachedUser = await _storage.read(key: _cachedUserKey);
+      final cachedVisitedCount = await _storage.read(key: _cachedVisitedCountKey);
+      final cachedReviewCount = await _storage.read(key: _cachedReviewCountKey);
+      final cachedVisitedPlaces = await _storage.read(key: _cachedVisitedPlacesKey);
+
+      bool hasAnyCache = false;
+
+      if (cachedUser != null && cachedUser.isNotEmpty) {
+        try {
+          final rawMap = Map<String, dynamic>.from(jsonDecode(cachedUser));
+          final normalized = _normalizeCachedUserMap(rawMap);
+          _myself = User.fromMap(normalized);
+          _hasMyself = true;
+          hasAnyCache = true;
+        } catch (e) {
+          if (kDebugMode) {
+            print('[PROFILE][UserProvider] cached user parse error: $e');
+          }
+          _hasMyself = false;
+          await _storage.delete(key: _cachedUserKey);
+        }
+      }
+
+      if (cachedVisitedCount != null) {
+        visitedCount = int.tryParse(cachedVisitedCount) ?? 0;
+        hasAnyCache = true;
+      }
+
+      if (cachedReviewCount != null) {
+        reviewCount = int.tryParse(cachedReviewCount) ?? 0;
+        hasAnyCache = true;
+      }
+
+      if (cachedVisitedPlaces != null && cachedVisitedPlaces.isNotEmpty) {
+        try {
+          visitedPlaces = List.from(jsonDecode(cachedVisitedPlaces));
+          hasAnyCache = true;
+        } catch (_) {
+          visitedPlaces = [];
+          await _storage.delete(key: _cachedVisitedPlacesKey);
+        }
+      }
+
+      if (hasAnyCache) {
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[PROFILE][UserProvider] loadCachedProfile error: $e');
+      }
+    } finally {
+      if (kDebugMode) {
+        print('[PROFILE][UserProvider] loadCachedProfile: ${sw.elapsedMilliseconds} ms');
+      }
+    }
+  }
+
+  Future<void> _saveCachedUser() async {
+    if (!_hasMyself) return;
+    await _storage.write(
+      key: _cachedUserKey,
+      value: jsonEncode(_myself.toMap()),
+    );
+  }
+
+  Future<void> _saveCachedVisitedMeta() async {
+    await _storage.write(
+      key: _cachedVisitedCountKey,
+      value: visitedCount.toString(),
+    );
+    await _storage.write(
+      key: _cachedReviewCountKey,
+      value: reviewCount.toString(),
+    );
+    await _storage.write(
+      key: _cachedVisitedPlacesKey,
+      value: jsonEncode(visitedPlaces),
+    );
+  }
 
   Future<void> getMe({bool silent = false}) async {
     final sw = Stopwatch()..start();
@@ -48,6 +137,7 @@ class UserProvider extends ChangeNotifier {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _myself = User.fromMap(jsonDecode(response.body));
         _hasMyself = true;
+        await _saveCachedUser();
       } else {
         throw Exception('Failed to load user: ${response.statusCode}');
       }
@@ -100,8 +190,9 @@ class UserProvider extends ChangeNotifier {
       }).toList();
 
       visitedCount = visited.length;
-      reviewCount =
-          visited.where((visit) => visit['status'] == 'VISITED').length;
+      reviewCount = visited.where((visit) => visit['status'] == 'VISITED').length;
+
+      await _saveCachedVisitedMeta();
 
       if (!silent) notifyListeners();
     } catch (e) {
@@ -118,15 +209,43 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshProfileInBackground() async {
+    final sw = Stopwatch()..start();
+
+    try {
+      await Future.wait([
+        getMe(silent: true),
+        fetchVisitedCount(silent: true),
+      ]);
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('[PROFILE][UserProvider] refreshProfileInBackground error: $e');
+      }
+    } finally {
+      if (kDebugMode) {
+        print(
+          '[PROFILE][UserProvider] refreshProfileInBackground total: ${sw.elapsedMilliseconds} ms',
+        );
+      }
+    }
+  }
+
   void notifyProfileReady() {
     notifyListeners();
   }
 
-  void clearUser() {
+  Future<void> clearUser() async {
     _hasMyself = false;
     visitedCount = 0;
     reviewCount = 0;
     visitedPlaces = [];
+
+    await _storage.delete(key: _cachedUserKey);
+    await _storage.delete(key: _cachedVisitedCountKey);
+    await _storage.delete(key: _cachedReviewCountKey);
+    await _storage.delete(key: _cachedVisitedPlacesKey);
+
     notifyListeners();
   }
 
@@ -160,6 +279,7 @@ class UserProvider extends ChangeNotifier {
 
       _myself = user;
       _hasMyself = true;
+      await _saveCachedUser();
       notifyListeners();
     } catch (_) {
       rethrow;
@@ -265,5 +385,22 @@ class UserProvider extends ChangeNotifier {
       if (kDebugMode) print(e);
       rethrow;
     }
+  }
+
+  Map<String, dynamic> _normalizeCachedUserMap(Map<String, dynamic> raw) {
+    return {
+      ...raw,
+      'name': raw['name'] ?? '',
+      'surname': raw['surname'] ?? '',
+      'father_name': raw['father_name'] ?? '',
+      'password': raw['password'] ?? '',
+      'email': raw['email'] ?? '',
+      'messenger_one': raw['messenger_one'] ?? '',
+      'messenger_two': raw['messenger_two'] ?? '',
+      'gender': raw['gender'] ?? 'BINARY',
+      'favorites': raw['favorites'] ?? [],
+      'friends': raw['friends'] ?? [],
+      'interests': raw['interests'] ?? [],
+    };
   }
 }

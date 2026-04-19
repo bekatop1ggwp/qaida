@@ -21,37 +21,35 @@ class Authorized extends StatefulWidget {
 }
 
 class _AuthorizedState extends State<Authorized> {
-  Future<void>? _profileFuture;
+  Future<void>? _initialFuture;
   Future<void>? _historyFuture;
 
   @override
   void initState() {
     super.initState();
-    _profileFuture = _loadProfile();
+    _initialFuture = _prepareInitialProfile();
     _historyFuture = _loadHistory();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _prepareInitialProfile() async {
     final sw = Stopwatch()..start();
     final userProvider = context.read<UserProvider>();
 
-    await Future.wait([
-      userProvider.getMe(silent: true),
-      userProvider.fetchVisitedCount(silent: true),
-    ]);
-
-    if (mounted) {
-      userProvider.notifyProfileReady();
-    }
+    await userProvider.loadCachedProfile();
 
     if (kDebugMode) {
-      print('[PROFILE][Authorized] _loadProfile total: ${sw.elapsedMilliseconds} ms');
+      print(
+        '[PROFILE][Authorized] _prepareInitialProfile total: ${sw.elapsedMilliseconds} ms',
+      );
     }
+
+    Future.microtask(() async {
+      await userProvider.refreshProfileInBackground();
+    });
   }
 
   Future<void> _loadHistory() async {
     final sw = Stopwatch()..start();
-
     await context.read<HistoryProvider>().loadHistory();
 
     if (kDebugMode) {
@@ -62,7 +60,7 @@ class _AuthorizedState extends State<Authorized> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<void>(
-      future: _profileFuture,
+      future: _initialFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

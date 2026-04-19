@@ -1,37 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qaida/components/q_icon.dart';
-import 'package:qaida/components/q_text.dart';
 import 'package:qaida/providers/user.provider.dart';
-import 'package:qaida/views/profile/settings/settings.dart';
 
 class AppBarButton extends StatelessWidget {
   const AppBarButton({super.key});
 
-  String fullName(String? name, String? surname, String email) {
-    if (name == null && surname == null) return email;
-    if (name == null) return surname!;
-    if (surname == null) return name;
-    return '$name $surname';
+  String fullName(String name, String surname, String email) {
+    final full = '$name $surname'.trim();
+    if (full.isNotEmpty) return full;
+    return email;
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().myself;
-    return TextButton(
-      onPressed: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const Settings()),
-        );
-      },
-      child: Row(
-        children: [
-          QText(
-            text: fullName(user.name, user.surname, user.email),
-            size: 25,
+    final userProvider = context.watch<UserProvider>();
+
+    if (!userProvider.hasMyself) {
+      return const SizedBox(
+        height: 28,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Профиль',
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF243B63),
+            ),
           ),
-          const QIcon(icon: Icons.arrow_forward_ios),
-        ],
+        ),
+      );
+    }
+
+    final user = userProvider.myself;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: () {},
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                fullName(user.name, user.surname, user.email),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF243B63),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.chevron_right,
+              color: Color(0xFF243B63),
+              size: 28,
+            ),
+          ],
+        ),
       ),
     );
   }

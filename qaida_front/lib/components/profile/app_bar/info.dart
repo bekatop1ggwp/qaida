@@ -12,6 +12,14 @@ class Info extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
+
+    if (!userProvider.hasMyself) {
+      return const SizedBox(
+        height: 74,
+        child: SizedBox.shrink(),
+      );
+    }
+
     final user = userProvider.myself;
 
     return Padding(
