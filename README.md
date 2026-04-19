@@ -1,4 +1,3 @@
-````md
 # Qaida — local run guide
 
 Проект состоит из 3 частей:
@@ -217,7 +216,4 @@ APK path:
 
 ```text
 build/app/outputs/flutter-apk/app-debug.apk
-```
-
-```
 ```
