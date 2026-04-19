@@ -34,8 +34,6 @@ class _AuthorizedState extends State<Authorized> {
   Future<void> _prepareInitialProfile() async {
     final userProvider = context.read<UserProvider>();
 
-    await userProvider.loadCachedProfile();
-
     Future.microtask(() async {
       await userProvider.refreshProfileInBackground();
     });

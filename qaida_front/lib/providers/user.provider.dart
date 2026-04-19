@@ -29,7 +29,36 @@ class UserProvider extends ChangeNotifier {
   int reviewCount = 0;
   List visitedPlaces = [];
 
+  bool _cacheHydrated = false;
+  bool get cacheHydrated => _cacheHydrated;
+
+  String _safeString(dynamic value) {
+    if (value == null) return '';
+    return value.toString();
+  }
+
+  Map<String, dynamic> _normalizeCachedUserMap(Map<String, dynamic> raw) {
+    return {
+      ...raw,
+      '_id': raw['_id'] ?? raw['id'] ?? '',
+      'name': _safeString(raw['name']),
+      'surname': _safeString(raw['surname']),
+      'father_name': _safeString(raw['father_name']),
+      'password': _safeString(raw['password']),
+      'email': _safeString(raw['email']),
+      'messenger_one': _safeString(raw['messenger_one']),
+      'messenger_two': _safeString(raw['messenger_two']),
+      'gender': raw['gender'] ?? 'BINARY',
+      'image_id': raw['image_id'],
+      'favorites': raw['favorites'] ?? [],
+      'friends': raw['friends'] ?? [],
+      'interests': raw['interests'] ?? [],
+    };
+  }
+
   Future<void> loadCachedProfile() async {
+    if (_cacheHydrated) return;
+
     final sw = Stopwatch()..start();
 
     try {
@@ -44,6 +73,7 @@ class UserProvider extends ChangeNotifier {
         try {
           final rawMap = Map<String, dynamic>.from(jsonDecode(cachedUser));
           final normalized = _normalizeCachedUserMap(rawMap);
+
           _myself = User.fromMap(normalized);
           _hasMyself = true;
           hasAnyCache = true;
@@ -76,6 +106,8 @@ class UserProvider extends ChangeNotifier {
         }
       }
 
+      _cacheHydrated = true;
+
       if (hasAnyCache) {
         notifyListeners();
       }
@@ -92,9 +124,13 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> _saveCachedUser() async {
     if (!_hasMyself) return;
+
+    final raw = Map<String, dynamic>.from(_myself.toMap());
+    final normalized = _normalizeCachedUserMap(raw);
+
     await _storage.write(
       key: _cachedUserKey,
-      value: jsonEncode(_myself.toMap()),
+      value: jsonEncode(normalized),
     );
   }
 
@@ -135,7 +171,10 @@ class UserProvider extends ChangeNotifier {
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        _myself = User.fromMap(jsonDecode(response.body));
+        final raw = Map<String, dynamic>.from(jsonDecode(response.body));
+        final normalized = _normalizeCachedUserMap(raw);
+
+        _myself = User.fromMap(normalized);
         _hasMyself = true;
         await _saveCachedUser();
       } else {
@@ -240,6 +279,7 @@ class UserProvider extends ChangeNotifier {
     visitedCount = 0;
     reviewCount = 0;
     visitedPlaces = [];
+    _cacheHydrated = false;
 
     await _storage.delete(key: _cachedUserKey);
     await _storage.delete(key: _cachedVisitedCountKey);
@@ -385,22 +425,5 @@ class UserProvider extends ChangeNotifier {
       if (kDebugMode) print(e);
       rethrow;
     }
-  }
-
-  Map<String, dynamic> _normalizeCachedUserMap(Map<String, dynamic> raw) {
-    return {
-      ...raw,
-      'name': raw['name'] ?? '',
-      'surname': raw['surname'] ?? '',
-      'father_name': raw['father_name'] ?? '',
-      'password': raw['password'] ?? '',
-      'email': raw['email'] ?? '',
-      'messenger_one': raw['messenger_one'] ?? '',
-      'messenger_two': raw['messenger_two'] ?? '',
-      'gender': raw['gender'] ?? 'BINARY',
-      'favorites': raw['favorites'] ?? [],
-      'friends': raw['friends'] ?? [],
-      'interests': raw['interests'] ?? [],
-    };
   }
 }
