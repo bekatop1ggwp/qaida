@@ -1,22 +1,33 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../shared/constants/recommendation_api.dart';
 
 class RecommendationProvider extends ChangeNotifier {
   List places = [];
 
   Future<void> getRecommendedPlaces(String userId) async {
     try {
-      http.Response response = await http.post(
-        Uri.parse('http://192.168.8.6:8001/recommend'),
+      final response = await http.post(
+        Uri.parse(RecommendationApi.recommendUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({ 'user_id': userId }),
+        body: json.encode({'user_id': userId}),
       );
-      places = List.from(jsonDecode(response.body));
-      notifyListeners();
-    } catch(e) {
-      if (kDebugMode) print(e);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        places = List.from(jsonDecode(response.body));
+        notifyListeners();
+        return;
+      }
+
+      if (kDebugMode) {
+        print('Recommendation request failed: ${response.statusCode}');
+        print(response.body);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('RecommendationProvider error: $e');
+      }
     }
   }
 

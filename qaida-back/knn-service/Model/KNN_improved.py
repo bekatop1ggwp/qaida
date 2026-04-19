@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson import ObjectId
 import numpy as np
+import math
 
 ENV_PATH = Path(__file__).resolve().parents[2] / "src" / "core" / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
@@ -40,11 +41,10 @@ def decimal_to_float(value, default=0.0):
 def jaccard_similarity(set_a, set_b):
     if not set_a and not set_b:
         return 0.0
-    intersection = len(set_a & set_b)
     union = len(set_a | set_b)
     if union == 0:
         return 0.0
-    return intersection / union
+    return len(set_a & set_b) / union
 
 
 def normalize_scores(score_map):
@@ -55,7 +55,7 @@ def normalize_scores(score_map):
     min_v = min(values)
     max_v = max(values)
 
-    if max_v == min_v:
+    if math.isclose(max_v, min_v):
         return {k: 1.0 for k in score_map.keys()}
 
     return {k: (v - min_v) / (max_v - min_v) for k, v in score_map.items()}
@@ -75,22 +75,24 @@ def get_user_data_by_id(user_id):
             }
         },
         {
-            "$group": {
-                "_id": "$_id",
-                "email": {"$first": "$email"},
-                "interests": {"$first": "$interests"},
-                "interests_info": {"$first": "$interests_info"},
+            "$project": {
+                "_id": 1,
+                "email": 1,
+                "interests": {"$ifNull": ["$interests", []]},
+                "favorites": {"$ifNull": ["$favorites", []]},
+                "interests_info": 1,
             }
         },
     ]
 
     user = list(users_collection.aggregate(pipeline))
     if not user:
-        return None, [], [], []
+        return None, [], [], [], []
 
     user_data = user[0]
     user_name = user_data.get("email")
     user_interests = user_data.get("interests", [])
+    user_favorites = [to_str_id(x) for x in user_data.get("favorites", [])]
 
     user_minor_categories = []
     for rubric in user_data.get("interests_info", []):
@@ -110,7 +112,7 @@ def get_user_data_by_id(user_id):
     visited_places = list(db["visiteds"].aggregate(visited_places_pipeline))
     visited_place_ids = [to_str_id(place["_id"]) for place in visited_places]
 
-    return user_name, user_interests, user_minor_categories, visited_place_ids
+    return user_name, user_interests, user_minor_categories, visited_place_ids, user_favorites
 
 
 def get_visited_places_by_user(user_id):
@@ -132,6 +134,15 @@ def get_visited_places_by_user(user_id):
     return visited_places
 
 
+def get_global_place_popularity():
+    pipeline = [
+        {"$match": {"status": "VISITED"}},
+        {"$group": {"_id": "$place_id", "count": {"$sum": 1}}},
+    ]
+    rows = list(db["visiteds"].aggregate(pipeline))
+    return {to_str_id(row["_id"]): row["count"] for row in rows}
+
+
 def generate_user_interest_vector(user_minor_categories):
     all_minor_categories = list(db["categories"].find({}, {"_id": 1}))
     all_minor_category_ids = [doc["_id"] for doc in all_minor_categories]
@@ -140,13 +151,13 @@ def generate_user_interest_vector(user_minor_categories):
         category_id: index for index, category_id in enumerate(all_minor_category_ids)
     }
 
-    user_interest_vector = [0] * len(all_minor_category_ids)
+    user_interest_vector = [0.0] * len(all_minor_category_ids)
 
     for category_id in user_minor_categories:
         category_id = to_object_id(category_id)
         index = category_index_map.get(category_id)
         if index is not None:
-            user_interest_vector[index] = 1
+            user_interest_vector[index] = 1.0
 
     return user_interest_vector, all_minor_category_ids
 
@@ -158,7 +169,10 @@ def get_places_for_user(user_minor_categories):
     if not category_object_ids:
         return []
 
-    existing_categories = db["categories"].distinct("_id", {"_id": {"$in": category_object_ids}})
+    existing_categories = db["categories"].distinct(
+        "_id",
+        {"_id": {"$in": category_object_ids}}
+    )
     if not existing_categories:
         return []
 
@@ -269,7 +283,7 @@ def get_top_similar_users(user_interests, target_user_id, top_n=30, min_similari
     users = list(
         users_collection.find(
             {"_id": {"$ne": to_object_id(target_user_id)}},
-            {"interests": 1}
+            {"interests": 1, "favorites": 1}
         )
     )
 
@@ -282,29 +296,37 @@ def get_top_similar_users(user_interests, target_user_id, top_n=30, min_similari
             scored_users.append({
                 "user_id": to_str_id(user["_id"]),
                 "similarity": similarity,
+                "favorites": [to_str_id(x) for x in user.get("favorites", [])],
             })
 
     scored_users.sort(key=lambda x: x["similarity"], reverse=True)
     return scored_users[:top_n]
 
 
-def build_collaborative_scores(similar_users, user_visited_set):
+def build_collaborative_scores(similar_users, user_visited_set, user_favorites_set):
     collaborative_scores = {}
+    favorite_scores = {}
 
     for similar_user in similar_users:
         sim_user_id = similar_user["user_id"]
         sim_weight = similar_user["similarity"]
+        sim_favorites = set(similar_user.get("favorites", []))
 
-        visited_places = get_visited_places_by_user(sim_user_id)
+        visited_places = set(get_visited_places_by_user(sim_user_id))
 
-        unique_places = set(visited_places)
-        for place_id in unique_places:
+        for place_id in visited_places:
             if place_id in user_visited_set:
                 continue
-
             collaborative_scores[place_id] = collaborative_scores.get(place_id, 0.0) + sim_weight
 
-    return collaborative_scores
+        for place_id in sim_favorites:
+            if place_id in user_visited_set:
+                continue
+            if place_id in user_favorites_set:
+                continue
+            favorite_scores[place_id] = favorite_scores.get(place_id, 0.0) + (sim_weight * 1.15)
+
+    return collaborative_scores, favorite_scores
 
 
 def build_content_scores(candidate_place_ids, place_feature_map, user_vector):
@@ -316,8 +338,6 @@ def build_content_scores(candidate_place_ids, place_feature_map, user_vector):
             continue
 
         similarity = calculate_content_similarity(user_vector, place_data["vector"])
-
-        # Лёгкий бонус за рейтинг 2GIS
         rating_bonus = min(place_data["rating"] / 5.0, 1.0) * 0.15
 
         content_scores[place_id] = similarity + rating_bonus
@@ -325,22 +345,46 @@ def build_content_scores(candidate_place_ids, place_feature_map, user_vector):
     return content_scores
 
 
-def rank_places(collaborative_scores, content_scores, alpha=0.65, beta=0.35):
+def build_popularity_penalty(candidate_place_ids, global_popularity):
+    if not candidate_place_ids:
+        return {}
+
+    # Штрафуем только внутри текущего кандидатного пула
+    popularity_map = {
+        place_id: global_popularity.get(place_id, 0)
+        for place_id in candidate_place_ids
+    }
+
+    norm_popularity = normalize_scores(popularity_map)
+
+    # Чем популярнее место глобально, тем больше штраф.
+    # Но штраф мягкий, чтобы хорошие места не убить полностью.
+    return {place_id: score * 0.25 for place_id, score in norm_popularity.items()}
+
+
+def rank_places(collaborative_scores, favorite_scores, content_scores, popularity_penalty,
+                alpha=0.50, beta=0.25, gamma=0.30, delta=0.15):
     norm_collab = normalize_scores(collaborative_scores)
+    norm_fav = normalize_scores(favorite_scores)
     norm_content = normalize_scores(content_scores)
 
-    all_place_ids = set(norm_collab.keys()) | set(norm_content.keys())
+    all_place_ids = set(norm_collab.keys()) | set(norm_fav.keys()) | set(norm_content.keys())
 
     ranked = []
     for place_id in all_place_ids:
         collab = norm_collab.get(place_id, 0.0)
+        fav = norm_fav.get(place_id, 0.0)
         content = norm_content.get(place_id, 0.0)
-        final_score = alpha * collab + beta * content
+        pop_penalty = popularity_penalty.get(place_id, 0.0)
+
+        final_score = (alpha * collab) + (beta * fav) + (gamma * content) - (delta * pop_penalty)
 
         ranked.append({
             "place_id": place_id,
             "collaborative_score": collab,
+            "favorite_score": fav,
             "content_score": content,
+            "popularity_penalty": pop_penalty,
             "final_score": final_score,
         })
 
@@ -349,12 +393,13 @@ def rank_places(collaborative_scores, content_scores, alpha=0.65, beta=0.35):
 
 
 def find_k_recommendations_for_user(user_id, k):
-    user_name, user_interests, user_minor_categories, user_visited_places = get_user_data_by_id(user_id)
+    user_name, user_interests, user_minor_categories, user_visited_places, user_favorites = get_user_data_by_id(user_id)
 
     if not user_name or not user_interests:
         return []
 
     user_visited_set = set(user_visited_places)
+    user_favorites_set = set(user_favorites)
 
     similar_users = get_top_similar_users(
         user_interests=user_interests,
@@ -365,22 +410,38 @@ def find_k_recommendations_for_user(user_id, k):
     if not similar_users:
         return []
 
-    collaborative_scores = build_collaborative_scores(similar_users, user_visited_set)
-    if not collaborative_scores:
+    collaborative_scores, favorite_scores = build_collaborative_scores(
+        similar_users=similar_users,
+        user_visited_set=user_visited_set,
+        user_favorites_set=user_favorites_set,
+    )
+
+    candidate_place_ids = set(collaborative_scores.keys()) | set(favorite_scores.keys())
+    if not candidate_place_ids:
         return []
 
     user_vector, all_minor_categories = generate_user_interest_vector(user_minor_categories)
     places_for_user = get_places_for_user(user_minor_categories)
     place_feature_map = generate_place_feature_map(places_for_user, all_minor_categories)
 
-    candidate_place_ids = list(collaborative_scores.keys())
+    # Оставляем только места, для которых реально можем посчитать content signal
+    candidate_place_ids = [place_id for place_id in candidate_place_ids if place_id in place_feature_map]
+    if not candidate_place_ids:
+        return []
+
     content_scores = build_content_scores(candidate_place_ids, place_feature_map, user_vector)
+    global_popularity = get_global_place_popularity()
+    popularity_penalty = build_popularity_penalty(candidate_place_ids, global_popularity)
 
     ranked_places = rank_places(
-        collaborative_scores=collaborative_scores,
+        collaborative_scores={k: v for k, v in collaborative_scores.items() if k in candidate_place_ids},
+        favorite_scores={k: v for k, v in favorite_scores.items() if k in candidate_place_ids},
         content_scores=content_scores,
-        alpha=0.65,
-        beta=0.35,
+        popularity_penalty=popularity_penalty,
+        alpha=0.50,
+        beta=0.25,
+        gamma=0.30,
+        delta=1.0,
     )
 
     return [item["place_id"] for item in ranked_places[:k]]
