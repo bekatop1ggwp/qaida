@@ -1,36 +1,35 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from Model.KNN import generateRecommendationIds, getPlacesByIds
-from Model.KNN_improved import generateRecommendation
-from typing import List
+from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+import traceback
+import time
+
+from Model.KNN_improved import generateRecommendation
 
 app = FastAPI()
+
 
 class UserId(BaseModel):
     user_id: str
 
 
-origins = ["*"]
+@app.get("/health")
+def health():
+    return {"ok": True}
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-@app.post('/recommend')
-async def get_recommendation(user_id:UserId):
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Ид пользователя не отправлен")
-    
-    # recids = generateRecommendationIds(user_id.user_id)
-    # recommended_places = getPlacesByIds(recids)
-    recommended_places = generateRecommendation(user_id.user_id)
-    return recommended_places
+@app.post("/recommend")
+def recommend(payload: UserId):
+    start = time.time()
+    print(f"[RECOMMEND] request user_id={payload.user_id}")
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    try:
+        result = generateRecommendation(payload.user_id)
+        elapsed = time.time() - start
+        print(f"[RECOMMEND] success elapsed={elapsed:.3f}s count={len(result)}")
+        return result
+    except Exception as e:
+        elapsed = time.time() - start
+        print(f"[RECOMMEND] ERROR elapsed={elapsed:.3f}s error={e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=200, content=[])

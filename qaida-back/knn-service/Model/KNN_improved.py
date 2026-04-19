@@ -1,4 +1,6 @@
 import os
+import time
+import traceback
 from pathlib import Path
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -18,13 +20,14 @@ db = client.get_default_database()
 if db is None:
     db = client["qaida"]
 
-# -------------------------
-# Global in-memory caches
-# -------------------------
 ALL_MINOR_CATEGORY_IDS = []
 CATEGORY_INDEX_MAP = {}
 PLACE_CACHE = {}
 PLACE_VECTOR_CACHE = {}
+
+
+def log(msg):
+    print(f"[KNN] {msg}")
 
 
 def _to_oid(value):
@@ -49,10 +52,15 @@ def _to_float(value, default=0.0):
 def warmup_cache():
     global ALL_MINOR_CATEGORY_IDS, CATEGORY_INDEX_MAP, PLACE_CACHE, PLACE_VECTOR_CACHE
 
+    started = time.time()
+    log("warmup_cache started")
+
     ALL_MINOR_CATEGORY_IDS = list(db["categories"].distinct("_id"))
     CATEGORY_INDEX_MAP = {
         category_id: idx for idx, category_id in enumerate(ALL_MINOR_CATEGORY_IDS)
     }
+
+    log(f"categories loaded: {len(ALL_MINOR_CATEGORY_IDS)}")
 
     places = list(
         db["places"].aggregate([
@@ -67,43 +75,52 @@ def warmup_cache():
         ])
     )
 
+    log(f"places loaded: {len(places)}")
+
     place_cache = {}
     place_vector_cache = {}
 
     for place in places:
-        place_id = _to_str(place["_id"])
-        place_cache[place_id] = place
+        try:
+            place_id = _to_str(place["_id"])
+            place_cache[place_id] = place
 
-        place_categories = place.get("category_id", [])
-        if not isinstance(place_categories, list):
-            place_categories = [place_categories]
+            place_categories = place.get("category_id", [])
+            if not isinstance(place_categories, list):
+                place_categories = [place_categories]
 
-        global_category_ids = set()
-        for rubric in place.get("global_category", []):
-            for category_id in rubric.get("category_ids", []):
-                global_category_ids.add(category_id)
+            global_category_ids = set()
+            for rubric in place.get("global_category", []):
+                for category_id in rubric.get("category_ids", []):
+                    global_category_ids.add(category_id)
 
-        total_minor = len(ALL_MINOR_CATEGORY_IDS) or 1
-        global_weight = max(0.0, 1 - (len(global_category_ids) / total_minor))
+            total_minor = len(ALL_MINOR_CATEGORY_IDS) or 1
+            global_weight = max(0.0, 1 - (len(global_category_ids) / total_minor))
 
-        vector = []
-        place_category_set = set(place_categories)
+            vector = []
+            place_category_set = set(place_categories)
 
-        for category_id in ALL_MINOR_CATEGORY_IDS:
-            if category_id in place_category_set:
-                vector.append(1.0)
-            elif category_id in global_category_ids:
-                vector.append(global_weight)
-            else:
-                vector.append(0.0)
+            for category_id in ALL_MINOR_CATEGORY_IDS:
+                if category_id in place_category_set:
+                    vector.append(1.0)
+                elif category_id in global_category_ids:
+                    vector.append(global_weight)
+                else:
+                    vector.append(0.0)
 
-        place_vector_cache[place_id] = {
-            "vector": vector,
-            "score": _to_float(place.get("score_2gis", 0)),
-        }
+            place_vector_cache[place_id] = {
+                "vector": vector,
+                "score": _to_float(place.get("score_2gis", 0)),
+            }
+        except Exception as e:
+            log(f"warmup skip place error={e}")
+            traceback.print_exc()
 
     PLACE_CACHE = place_cache
     PLACE_VECTOR_CACHE = place_vector_cache
+
+    elapsed = time.time() - started
+    log(f"warmup_cache finished in {elapsed:.3f}s, vectors={len(PLACE_VECTOR_CACHE)}")
 
 
 def get_user_data_by_id(user_id):
@@ -261,7 +278,6 @@ def rank_places(user_vector, candidate_scores):
 
         content_score = cosine_sim(user_vector, place_data["vector"])
         rating_bonus = min(place_data["score"] / 5.0, 1.0) * 0.1
-
         final_score = (0.7 * collaborative_score) + (0.3 * content_score) + rating_bonus
 
         ranked.append((place_id, final_score))
@@ -272,6 +288,7 @@ def rank_places(user_vector, candidate_scores):
 
 def getPlacesByIds(ids):
     places = []
+
     for place_id in ids:
         place = PLACE_CACHE.get(_to_str(place_id))
         if not place:
@@ -289,23 +306,55 @@ def getPlacesByIds(ids):
         prepared["category_id"] = [_to_str(x) for x in prepared.get("category_id", [])]
         prepared["score_2gis"] = str(prepared.get("score_2gis", "0"))
 
+        # global_category фронту не нужен
+        prepared.pop("global_category", None)
+        prepared.pop("matching_categories", None)
+
         places.append(prepared)
 
     return places
 
 
 def generateRecommendation(user_id):
-    user_name, user_interests, user_minor_categories, user_visited_places = get_user_data_by_id(user_id)
-    if not user_name or not user_interests:
+    started = time.time()
+    log(f"generateRecommendation started user_id={user_id}")
+
+    try:
+        user_name, user_interests, user_minor_categories, user_visited_places = get_user_data_by_id(user_id)
+        log(f"user loaded name={user_name} interests={len(user_interests)} visited={len(user_visited_places)}")
+
+        if not user_name or not user_interests:
+            log("user has no name or interests, returning []")
+            return []
+
+        user_vector = build_user_vector(user_minor_categories)
+        log(f"user vector built len={len(user_vector)}")
+
+        similar_users = get_similar_users(user_interests, user_id)
+        log(f"similar users found: {len(similar_users)}")
+
+        candidate_scores = get_candidate_places_from_similar_users(similar_users, user_visited_places)
+        log(f"candidate places found: {len(candidate_scores)}")
+
+        ranked = rank_places(user_vector, candidate_scores)
+        log(f"ranked places: {len(ranked)}")
+
+        top_ids = [place_id for place_id, _ in ranked[:10]]
+        result = getPlacesByIds(top_ids)
+
+        elapsed = time.time() - started
+        log(f"generateRecommendation finished in {elapsed:.3f}s result_count={len(result)}")
+        return result
+
+    except Exception as e:
+        elapsed = time.time() - started
+        log(f"generateRecommendation ERROR in {elapsed:.3f}s error={e}")
+        traceback.print_exc()
         return []
 
-    user_vector = build_user_vector(user_minor_categories)
-    similar_users = get_similar_users(user_interests, user_id)
-    candidate_scores = get_candidate_places_from_similar_users(similar_users, user_visited_places)
-    ranked = rank_places(user_vector, candidate_scores)
 
-    top_ids = [place_id for place_id, _ in ranked[:10]]
-    return getPlacesByIds(top_ids)
-
-
-warmup_cache()
+try:
+    warmup_cache()
+except Exception as e:
+    log(f"warmup_cache FAILED error={e}")
+    traceback.print_exc()
