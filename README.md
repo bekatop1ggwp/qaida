@@ -60,11 +60,11 @@ src/core/.env
 Содержимое:
 
 ```env
-DATABASE_URL=mongodb://localhost:27017/qaida
-ACCESS_TOKEN=qaida_access_secret_123
-REFRESH_TOKEN=qaida_refresh_secret_123
-BACKEND_URL=http://192.168.8.6:8080
-API_KEY=test
+DATABASE_URL=your_mongodb_connection_string
+ACCESS_TOKEN=your_access_token_secret
+REFRESH_TOKEN=your_refresh_token_secret
+API_KEY=your_api_key
+BACKEND_URL=http://localhost:8080
 ```
 
 Запуск backend:

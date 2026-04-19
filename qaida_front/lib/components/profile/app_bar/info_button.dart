@@ -35,7 +35,7 @@ class InfoButton extends StatelessWidget {
           );
         },
         child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
+          constraints: const BoxConstraints(minHeight: 68),
           padding: const EdgeInsets.symmetric(
             horizontal: 10,
             vertical: 12,
