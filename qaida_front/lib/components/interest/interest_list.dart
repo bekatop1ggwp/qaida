@@ -18,7 +18,6 @@ class _InterestListState extends State<InterestList> {
   @override
   void initState() {
     super.initState();
-
     _future = _init();
   }
 
@@ -36,37 +35,46 @@ class _InterestListState extends State<InterestList> {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: FutureBuilder<void>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            if (kDebugMode) {
-              print(snapshot.error);
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: FutureBuilder<void>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
 
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Ошибка. Попробуйте позже'),
-                ),
-              );
-              Navigator.of(context).pop();
-            });
+            if (snapshot.hasError) {
+              if (kDebugMode) {
+                print(snapshot.error);
+              }
 
-            return const SizedBox.shrink();
-          }
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
 
-          final provider = context.watch<InterestsProvider>();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ошибка. Попробуйте позже'),
+                  ),
+                );
 
-          return ListView.builder(
-            itemCount: provider.interests.length,
-            itemBuilder: (_, index) => InterestItem(index: index),
-          );
-        },
+                Navigator.of(context).pop();
+              });
+
+              return const SizedBox.shrink();
+            }
+
+            final provider = context.watch<InterestsProvider>();
+
+            return ListView.builder(
+              padding: const EdgeInsets.only(top: 8, bottom: 8),
+              itemCount: provider.interests.length,
+              itemBuilder: (_, index) => InterestItem(index: index),
+            );
+          },
+        ),
       ),
     );
   }

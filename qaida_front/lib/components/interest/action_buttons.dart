@@ -10,89 +10,104 @@ class ActionButtons extends StatelessWidget {
   const ActionButtons({super.key});
 
   Future<void> handleSend(BuildContext context) async {
-    final selectedIds = context.read<InterestsProvider>().getSelectedIds();
+    final List<String> interests =
+        context.read<InterestsProvider>().getSelectedIds();
 
     const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
+    final String? token = await storage.read(key: 'access_token');
 
     if (token == null || token.isEmpty) {
       throw Exception('Access token not found');
     }
 
-    await context.read<InterestsProvider>().sendInterests(token, selectedIds);
+    await context.read<InterestsProvider>().sendInterests(token, interests);
     await context.read<UserProvider>().getMe();
   }
 
   void navToHome(BuildContext context) {
+    Navigator.pop(context);
     Navigator.pop(context);
     context.read<TemplateProvider>().changeTemplatePage(0);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(10.0),
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () {
-                navToHome(context);
-              },
-              style: ButtonStyle(
-                foregroundColor: WidgetStateProperty.all(
-                  context.read<ThemeProvider>().lightBlack,
-                ),
-              ),
-              child: const Text(
-                'Пропустить',
-                style: TextStyle(fontSize: 15),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(10.0),
-            height: 50,
-            child: ElevatedButton(
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(
-                  context.read<ThemeProvider>().lightBlack,
-                ),
-                foregroundColor: WidgetStateProperty.all(Colors.white),
-              ),
-              onPressed: () async {
-                try {
-                  await handleSend(context);
+    final provider = context.watch<InterestsProvider>();
+    final int selectedCount =
+        provider.selectedItems.where((element) => element).length;
 
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Интересы обновлены'),
-                      ),
-                    );
-                    navToHome(context);
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Не удалось сохранить интересы: $e'),
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text(
-                'Далее',
-                style: TextStyle(fontSize: 15),
+    final Color blue = context.read<ThemeProvider>().lightBlack;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () {
+                  navToHome(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: const Color(0xFFE9E9EC),
+                  foregroundColor: blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Пропустить',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: SizedBox(
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await handleSend(context);
+                    if (context.mounted) {
+                      navToHome(context);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Не удалось сохранить интересы: $e'),
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  'Далее ($selectedCount)',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
