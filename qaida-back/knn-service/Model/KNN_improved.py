@@ -1,9 +1,22 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 from pymongo import MongoClient
-from bson import ObjectId
+from bson import ObjectId, Decimal128
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
-client = MongoClient("mongodb+srv://ald1k0n:264166@cluster0.ppiyo0p.mongodb.net/qaida")
-db = client["qaida"]
+ENV_PATH = Path(__file__).resolve().parents[2] / "src" / "core" / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
+
+client = MongoClient(DATABASE_URL)
+db = client.get_default_database()
+if db is None:
+    db = client["qaida"]
 
 def get_user_data_by_id(user_id):
     users_collection = db["users"]
