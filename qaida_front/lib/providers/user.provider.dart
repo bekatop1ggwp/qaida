@@ -25,6 +25,8 @@ class UserProvider extends ChangeNotifier {
   List visitedPlaces = [];
 
   Future<void> getMe({bool silent = false}) async {
+    final sw = Stopwatch()..start();
+
     _isLoadingMyself = true;
     if (!silent) notifyListeners();
 
@@ -58,10 +60,15 @@ class UserProvider extends ChangeNotifier {
     } finally {
       _isLoadingMyself = false;
       if (!silent) notifyListeners();
+      if (kDebugMode) {
+        print('[PROFILE][UserProvider] getMe: ${sw.elapsedMilliseconds} ms');
+      }
     }
   }
 
   Future<void> fetchVisitedCount({bool silent = false}) async {
+    final sw = Stopwatch()..start();
+
     try {
       final String? token = await _storage.read(key: 'access_token');
 
@@ -102,6 +109,12 @@ class UserProvider extends ChangeNotifier {
         print('fetchVisitedCount error: $e');
       }
       rethrow;
+    } finally {
+      if (kDebugMode) {
+        print(
+          '[PROFILE][UserProvider] fetchVisitedCount: ${sw.elapsedMilliseconds} ms',
+        );
+      }
     }
   }
 

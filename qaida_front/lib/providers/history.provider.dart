@@ -40,11 +40,22 @@ class HistoryProvider extends ChangeNotifier {
   }
 
   Future<void> loadHistory() async {
+    final sw = Stopwatch()..start();
+
     final ids = await _getHistoryIds();
+
+    if (kDebugMode) {
+      print('[PROFILE][HistoryProvider] history ids count: ${ids.length}');
+    }
 
     if (ids.isEmpty) {
       history = [];
       notifyListeners();
+      if (kDebugMode) {
+        print(
+          '[PROFILE][HistoryProvider] loadHistory total: ${sw.elapsedMilliseconds} ms',
+        );
+      }
       return;
     }
 
@@ -54,6 +65,12 @@ class HistoryProvider extends ChangeNotifier {
 
     history = places;
     notifyListeners();
+
+    if (kDebugMode) {
+      print(
+        '[PROFILE][HistoryProvider] loadHistory total: ${sw.elapsedMilliseconds} ms',
+      );
+    }
   }
 
   Future<void> addHistory(String placeId) async {

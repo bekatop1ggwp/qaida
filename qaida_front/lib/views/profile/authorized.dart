@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/components/forward_button.dart';
@@ -31,6 +32,7 @@ class _AuthorizedState extends State<Authorized> {
   }
 
   Future<void> _loadProfile() async {
+    final sw = Stopwatch()..start();
     final userProvider = context.read<UserProvider>();
 
     await Future.wait([
@@ -41,10 +43,20 @@ class _AuthorizedState extends State<Authorized> {
     if (mounted) {
       userProvider.notifyProfileReady();
     }
+
+    if (kDebugMode) {
+      print('[PROFILE][Authorized] _loadProfile total: ${sw.elapsedMilliseconds} ms');
+    }
   }
 
   Future<void> _loadHistory() async {
+    final sw = Stopwatch()..start();
+
     await context.read<HistoryProvider>().loadHistory();
+
+    if (kDebugMode) {
+      print('[PROFILE][Authorized] _loadHistory total: ${sw.elapsedMilliseconds} ms');
+    }
   }
 
   @override
