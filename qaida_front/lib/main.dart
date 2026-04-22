@@ -55,20 +55,34 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    timer = Timer.periodic(const Duration(seconds: 5), (t) async {
-      if (kDebugMode) print('runnin');
-      if (context.read<AuthProvider>().isAuthorized) {
-        final userPro = context.read<UserProvider>();
 
+    timer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (!mounted) return;
+
+      try {
+        final auth = context.read<AuthProvider>();
+        if (!auth.isAuthorized) return;
+
+        final userPro = context.read<UserProvider>();
         if (!userPro.hasMyself) return;
 
         final user = userPro.myself!;
         final geoProv = context.read<GeolocationProvider>();
-        final location = await context.read<GeolocationProvider>().getLocation();
 
-        geoProv.connect();
-        geoProv.sendLocation(user.id, location['lat'], location['lon']);
-        geoProv.close();
+        final location = await geoProv.getLocationSafe();
+        if (location == null) return;
+
+        geoProv.connectIfNeeded();
+        geoProv.sendLocation(
+          user.id,
+          location['lat']!,
+          location['lon']!,
+        );
+      } catch (e, st) {
+        if (kDebugMode) {
+          print('Geo timer error: $e');
+          print(st);
+        }
       }
     });
   }
@@ -76,6 +90,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     timer.cancel();
+    context.read<GeolocationProvider>().disposeSocket();
     super.dispose();
   }
 
