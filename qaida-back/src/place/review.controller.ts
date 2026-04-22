@@ -21,6 +21,13 @@ import { PlaceReviewService } from './placeReview.service';
 export class ReviewController {
   constructor(private readonly placeReview: PlaceReviewService) {}
 
+  @ApiResponse({ type: ReviewDTO, isArray: true })
+  @UseGuards(AuthGuard)
+  @Get('/me')
+  async getMyReviews(@Req() req: Request) {
+    return await this.placeReview.getMyReviews(req['user']._id);
+  }
+
   @Get('/:place_id')
   async getPlaceReviews(@Param('place_id') place_id: ObjectId) {
     return await this.placeReview.getReviewForPlace(place_id);

@@ -223,8 +223,6 @@ class UserProvider extends ChangeNotifier {
 
       final reviewedVisits =
           visited.where((visit) => visit['status'] == 'VISITED').toList();
-      final processingVisits =
-          visited.where((visit) => visit['status'] == 'PROCESSING').toList();
 
       visitedPlaces = reviewedVisits.map((visit) {
         final place = Map<String, dynamic>.from(visit['place_id']);
@@ -234,11 +232,10 @@ class UserProvider extends ChangeNotifier {
       }).toList();
 
       visitedCount = reviewedVisits.length;
-      reviewCount = processingVisits.length;
+      reviewCount = reviewedVisits.length;
 
       await _saveCachedVisitedMeta();
-
-      if (!silent) notifyListeners();
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('fetchVisitedCount error: $e');

@@ -7,16 +7,32 @@ import 'package:http/http.dart' as http;
 class ReviewProvider extends ChangeNotifier {
   static const String _baseUrl = 'http://192.168.8.6:8080';
 
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
   List processing = [];
+  List myReviews = [];
   int reviewCount = 0;
+
+  double _parseScore(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    if (value is Map && value.containsKey(r'$numberDecimal')) {
+      return double.tryParse(value[r'$numberDecimal'].toString()) ?? 0;
+    }
+    return 0;
+  }
+
+  Future<String?> _getToken() async {
+    return await _storage.read(key: 'access_token');
+  }
 
   Future<void> _changeVisitedStatus(
     String visitedId,
     String placeId,
     String status,
   ) async {
-    final String? token =
-        await const FlutterSecureStorage().read(key: 'access_token');
+    final token = await _getToken();
 
     final response = await http.put(
       Uri.parse('$_baseUrl/api/place/visited/$visitedId'),
@@ -34,13 +50,11 @@ class ReviewProvider extends ChangeNotifier {
     }
 
     processing.removeWhere((place) => place['_id'] == placeId);
-    reviewCount = processing.length;
     notifyListeners();
   }
 
   Future<void> getProcessingPlaces() async {
-    final String? token =
-        await const FlutterSecureStorage().read(key: 'access_token');
+    final token = await _getToken();
 
     final response = await http.get(
       Uri.parse('$_baseUrl/api/place/visited?status=PROCESSING'),
@@ -62,13 +76,47 @@ class ReviewProvider extends ChangeNotifier {
       return result;
     }).toList();
 
-    reviewCount = processing.length;
     notifyListeners();
   }
 
+  Future<void> getMyReviews() async {
+    final token = await _getToken();
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/review/me'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to load my reviews: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    final List reviews = List.from(jsonDecode(response.body));
+
+    myReviews = reviews.map((data) {
+      final place = Map<String, dynamic>.from(data['place_id']);
+      place['review_id'] = data['_id'];
+      place['review_score'] = _parseScore(data['score']);
+      place['review_comment'] = data['comment'];
+      place['review_created_at'] = data['created_at'];
+      return place;
+    }).toList();
+
+    reviewCount = myReviews.length;
+    notifyListeners();
+  }
+
+  Future<void> refreshAll() async {
+    await Future.wait([
+      getProcessingPlaces(),
+      getMyReviews(),
+    ]);
+  }
+
   Future<void> sendRating(String visitedId, String placeId, int rating) async {
-    final String? token =
-        await const FlutterSecureStorage().read(key: 'access_token');
+    final token = await _getToken();
 
     final reviewResponse = await http.post(
       Uri.parse('$_baseUrl/api/review'),
@@ -90,15 +138,16 @@ class ReviewProvider extends ChangeNotifier {
     }
 
     await _changeVisitedStatus(visitedId, placeId, 'VISITED');
+    await refreshAll();
   }
 
   Future<void> skip(String visitedId, String placeId) async {
     await _changeVisitedStatus(visitedId, placeId, 'SKIP');
+    await getProcessingPlaces();
   }
 
   Future<void> createDemoSuggestions({int count = 5}) async {
-    final String? token =
-        await const FlutterSecureStorage().read(key: 'access_token');
+    final token = await _getToken();
 
     final response = await http.post(
       Uri.parse('$_baseUrl/api/place/visited/demo'),
@@ -115,6 +164,6 @@ class ReviewProvider extends ChangeNotifier {
       );
     }
 
-    await getProcessingPlaces();
+    await refreshAll();
   }
 }

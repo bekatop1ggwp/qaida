@@ -26,14 +26,15 @@ class _ReviewsState extends State<Reviews> {
   }
 
   Future<void> _loadData() async {
-    await context.read<ReviewProvider>().getProcessingPlaces();
-    await context.read<UserProvider>().fetchVisitedCount(silent: true);
+    await context.read<ReviewProvider>().refreshAll();
+    await context.read<UserProvider>().fetchVisitedCount();
   }
 
-  void _retry() {
-    setState(() {
-      _processingFuture = _loadData();
-    });
+  Future<void> _refresh() async {
+    await _loadData();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _createDemoSuggestions() async {
@@ -45,7 +46,7 @@ class _ReviewsState extends State<Reviews> {
 
     try {
       await context.read<ReviewProvider>().createDemoSuggestions(count: 5);
-      await context.read<UserProvider>().fetchVisitedCount(silent: true);
+      await context.read<UserProvider>().fetchVisitedCount();
 
       if (!mounted) return;
 
@@ -54,6 +55,8 @@ class _ReviewsState extends State<Reviews> {
           content: Text('Demo-предложения созданы'),
         ),
       );
+
+      await _refresh();
     } catch (e) {
       if (!mounted) return;
 
@@ -69,6 +72,12 @@ class _ReviewsState extends State<Reviews> {
         });
       }
     }
+  }
+
+  void _retry() {
+    setState(() {
+      _processingFuture = _loadData();
+    });
   }
 
   @override
@@ -102,7 +111,7 @@ class _ReviewsState extends State<Reviews> {
           bottom: const TabBar(
             tabs: [
               Tab(child: QText(text: 'Ожидают отзыва')),
-              Tab(child: QText(text: 'Мои отызывы')),
+              Tab(child: QText(text: 'Мои отзывы')),
             ],
           ),
         ),
@@ -131,10 +140,10 @@ class _ReviewsState extends State<Reviews> {
               );
             }
 
-            return const TabBarView(
+            return TabBarView(
               children: [
-                PendingReview(),
-                MyReviews(),
+                PendingReview(onRefresh: _refresh),
+                MyReviews(onRefresh: _refresh),
               ],
             );
           },

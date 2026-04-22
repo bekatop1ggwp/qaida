@@ -40,6 +40,13 @@ export class PlaceReviewService {
       .populate(['votes', 'user_id']);
   }
 
+  async getMyReviews(user_id: ObjectId) {
+    return await this.review
+      .find({ user_id })
+      .sort({ created_at: -1 })
+      .populate(['place_id', 'user_id', 'votes']);
+  }
+
   async addReview(payload: ReviewDTO) {
     if (payload.score)
       await this.place.findByIdAndUpdate(payload.place_id, {

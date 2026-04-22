@@ -13,8 +13,17 @@ class ReviewPlaceListItem extends StatelessWidget {
     this.showMode = false,
   });
 
+  double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final String? visitedId = place['visited_id']?.toString();
+
     return Container(
       color: Colors.white,
       margin: const EdgeInsets.only(bottom: 10.0),
@@ -24,21 +33,23 @@ class ReviewPlaceListItem extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                ReviewPlaceListItemImage(url: place['image']),
+                ReviewPlaceListItemImage(url: place['image']?.toString()),
                 ReviewPlaceListItemDescription(
-                  id: place['_id'],
-                  visitedId: place['visited_id'],
-                  title: place['title'],
-                  address: place['address'],
+                  id: place['_id'].toString(),
+                  visitedId: visitedId,
+                  title: (place['title'] ?? '').toString(),
+                  address: (place['address'] ?? '').toString(),
                   showMode: showMode,
+                  reviewScore: _toDouble(place['review_score']),
+                  reviewComment: place['review_comment']?.toString(),
                 ),
               ],
             ),
           ),
-          if (!showMode)
+          if (!showMode && visitedId != null)
             PassedByButton(
-              placeId: place['_id'],
-              visitedId: place['visited_id'],
+              placeId: place['_id'].toString(),
+              visitedId: visitedId,
             ),
         ],
       ),
