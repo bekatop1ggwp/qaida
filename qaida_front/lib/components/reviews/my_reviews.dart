@@ -17,26 +17,41 @@ class MyReviews extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: userReviews.isEmpty
-          ? ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(height: 180),
-                Center(
-                  child: Text('У вас пока нет оставленных отзывов'),
-                ),
-              ],
-            )
-          : ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                for (var place in userReviews)
-                  ReviewPlaceListItem(
-                    place: place,
-                    showMode: true,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        children: [
+          if (userReviews.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 120),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.reviews_outlined,
+                    size: 52,
+                    color: Color(0xFF8C91A6),
                   ),
-              ],
+                  SizedBox(height: 12),
+                  Text(
+                    'У вас пока нет оставленных отзывов',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...userReviews.map(
+              (place) => ReviewPlaceListItem(
+                place: place,
+                showMode: true,
+              ),
             ),
+        ],
+      ),
     );
   }
 }

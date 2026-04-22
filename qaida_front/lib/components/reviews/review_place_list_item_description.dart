@@ -27,25 +27,57 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.only(right: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(title, overflow: TextOverflow.ellipsis),
-            Text(address, maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 6),
-            if (!showMode)
-              RatingBar.builder(
-                itemBuilder: (BuildContext context, _) => const Icon(
-                  Icons.star_rounded,
-                  color: Colors.yellow,
+    final hasSavedScore = (reviewScore ?? 0) > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2D3142),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          address,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF7D8597),
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (!showMode)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Оцените место',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF8C91A6),
+                  fontWeight: FontWeight.w600,
                 ),
-                initialRating: 0,
+              ),
+              const SizedBox(height: 6),
+              RatingBar.builder(
+                itemCount: 5,
                 minRating: 1,
                 allowHalfRating: false,
+                itemSize: 28,
+                unratedColor: const Color(0xFFD7DBE7),
+                itemBuilder: (context, _) => const Icon(
+                  Icons.star_rounded,
+                  color: Color(0xFFFFC542),
+                ),
+                initialRating: 0,
                 onRatingUpdate: (double value) async {
                   if (visitedId == null) return;
 
@@ -54,7 +86,9 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                         .read<ReviewProvider>()
                         .sendRating(visitedId!, id, value.toInt());
 
-                    await context.read<UserProvider>().fetchVisitedCount();
+                    await context
+                        .read<UserProvider>()
+                        .fetchVisitedCount(silent: true);
                   } catch (e) {
                     if (kDebugMode) print(e);
 
@@ -67,33 +101,66 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                     }
                   }
                 },
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RatingBarIndicator(
-                    rating: reviewScore ?? 0,
-                    itemBuilder: (context, index) => const Icon(
-                      Icons.star_rounded,
-                      color: Colors.yellow,
-                    ),
-                    itemCount: 5,
-                    itemSize: 20,
-                  ),
-                  if ((reviewComment ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      reviewComment!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
               ),
-          ],
-        ),
-      ),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F3F9),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  hasSavedScore ? 'Ваш отзыв' : 'Отзыв оставлен',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF5B6478),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (hasSavedScore)
+                RatingBarIndicator(
+                  rating: reviewScore!,
+                  itemBuilder: (context, _) => const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFFFC542),
+                  ),
+                  unratedColor: const Color(0xFFD7DBE7),
+                  itemCount: 5,
+                  itemSize: 22,
+                ),
+              if (!hasSavedScore)
+                const Text(
+                  'Оценка сохранена',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF5B6478),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              if ((reviewComment ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  reviewComment!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF7D8597),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ],
+          ),
+      ],
     );
   }
 }

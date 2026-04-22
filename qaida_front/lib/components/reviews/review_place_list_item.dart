@@ -22,20 +22,33 @@ class ReviewPlaceListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String id = place['_id']?.toString() ?? '';
     final String? visitedId = place['visited_id']?.toString();
 
     return Container(
-      color: Colors.white,
-      margin: const EdgeInsets.only(bottom: 10.0),
-      height: 130,
-      child: Row(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                ReviewPlaceListItemImage(url: place['image']?.toString()),
-                ReviewPlaceListItemDescription(
-                  id: place['_id'].toString(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ReviewPlaceListItemImage(url: place['image']?.toString()),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ReviewPlaceListItemDescription(
+                  id: id,
                   visitedId: visitedId,
                   title: (place['title'] ?? '').toString(),
                   address: (place['address'] ?? '').toString(),
@@ -43,14 +56,19 @@ class ReviewPlaceListItem extends StatelessWidget {
                   reviewScore: _toDouble(place['review_score']),
                   reviewComment: place['review_comment']?.toString(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (!showMode && visitedId != null)
-            PassedByButton(
-              placeId: place['_id'].toString(),
-              visitedId: visitedId,
+          if (!showMode && visitedId != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PassedByButton(
+                placeId: id,
+                visitedId: visitedId,
+              ),
             ),
+          ],
         ],
       ),
     );

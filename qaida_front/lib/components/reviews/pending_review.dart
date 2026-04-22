@@ -18,27 +18,39 @@ class PendingReview extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: pendingReviews.isEmpty
-          ? ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                ReviewInfo(),
-                SizedBox(height: 120),
-                Center(
-                  child: Text('Нет мест, ожидающих отзыва'),
-                ),
-              ],
-            )
-          : ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                const ReviewInfo(),
-                for (var place in pendingReviews)
-                  ReviewPlaceListItem(
-                    place: place,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 20),
+        children: [
+          const ReviewInfo(),
+          if (pendingReviews.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 80, 24, 24),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 52,
+                    color: Color(0xFF8C91A6),
                   ),
-              ],
+                  SizedBox(height: 12),
+                  Text(
+                    'Нет мест, ожидающих отзыва',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...pendingReviews.map(
+              (place) => ReviewPlaceListItem(place: place),
             ),
+        ],
+      ),
     );
   }
 }

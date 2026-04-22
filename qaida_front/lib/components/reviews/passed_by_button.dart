@@ -16,8 +16,8 @@ class PassedByButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
+    return OutlinedButton.icon(
+      onPressed: () async {
         try {
           await context.read<ReviewProvider>().skip(visitedId, placeId);
           await context.read<UserProvider>().fetchVisitedCount(silent: true);
@@ -33,22 +33,21 @@ class PassedByButton extends StatelessWidget {
           }
         }
       },
-      child: Container(
-        padding: const EdgeInsets.all(10.0),
-        decoration: const BoxDecoration(
-          color: Color(0xFFFF993A),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(10.0),
-            bottomLeft: Radius.circular(10.0),
-          ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFFF8A3D),
+        side: const BorderSide(
+          color: Color(0xFFFFC39A),
         ),
-        child: const RotatedBox(
-          quarterTurns: 1,
-          child: Text(
-            'Проходил мимо',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+        backgroundColor: const Color(0xFFFFF7F1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      icon: const Icon(Icons.directions_walk_rounded, size: 18),
+      label: const Text(
+        'Проходил мимо',
+        style: TextStyle(fontWeight: FontWeight.w600),
       ),
     );
   }
