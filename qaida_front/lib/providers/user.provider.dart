@@ -195,9 +195,8 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchVisitedCount({bool silent = false}) async {
+  Future fetchVisitedCount({bool silent = false}) async {
     final sw = Stopwatch()..start();
-
     try {
       final String? token = await _storage.read(key: 'access_token');
 
@@ -222,14 +221,21 @@ class UserProvider extends ChangeNotifier {
 
       final List visited = List.from(jsonDecode(response.body));
 
-      visitedPlaces = visited.map((visit) {
+      final reviewedVisits = visited.where((visit) => visit['status'] == 'VISITED').toList();
+      final processingVisits = visited.where((visit) => visit['status'] == 'PROCESSING').toList();
+
+      visitedPlaces = reviewedVisits.map((visit) {
         final place = Map<String, dynamic>.from(visit['place_id']);
         place['visited_id'] = visit['_id'];
+        place['status'] = visit['status'];
         return place;
       }).toList();
 
-      visitedCount = visited.length;
-      reviewCount = visited.where((visit) => visit['status'] == 'VISITED').length;
+      // reviewed places count
+      visitedCount = reviewedVisits.length;
+
+      // pending-to-review count, если где-то еще понадобится
+      reviewCount = processingVisits.length;
 
       await _saveCachedVisitedMeta();
 

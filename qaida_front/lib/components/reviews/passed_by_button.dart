@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/providers/review.provider.dart';
+import 'package:qaida/providers/user.provider.dart';
 
 class PassedByButton extends StatelessWidget {
   final String placeId;
@@ -16,7 +18,20 @@ class PassedByButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () async {
-        await context.read<ReviewProvider>().skip(visitedId, placeId);
+        try {
+          await context.read<ReviewProvider>().skip(visitedId, placeId);
+          await context.read<UserProvider>().fetchVisitedCount(silent: true);
+        } catch (e) {
+          if (kDebugMode) print(e);
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Не удалось обновить статус места'),
+              ),
+            );
+          }
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(10.0),

@@ -9,6 +9,13 @@ class MyReviews extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userReviews = context.watch<UserProvider>().visitedPlaces;
+
+    if (userReviews.isEmpty) {
+      return const Center(
+        child: Text('У вас пока нет оставленных отзывов'),
+      );
+    }
+
     return ListView(
       children: [
         for (var place in userReviews)

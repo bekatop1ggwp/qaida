@@ -23,24 +23,17 @@ export class GeolocationService {
     @InjectModel('Visited') private readonly visit: Model<VisitedDocument>,
   ) {}
 
-  private logger = new Logger();
+  private logger = new Logger(GeolocationService.name);
 
   handleConnection(socket: Socket): void {
     const clientId = socket.id;
-    this.logger.log('Client Connected', clientId);
+    this.logger.log(`Client connected: ${clientId}`);
     this.connectedClients.add(clientId);
-
-    console.log(this.connectedClients);
 
     socket.on('disconnect', () => {
       this.connectedClients.delete(clientId);
       this.clientLocations.delete(clientId);
-      this.logger.log('disconnected client', clientId);
-
-      console.log({
-        connectedClients: this.connectedClients,
-        locations: this.clientLocations,
-      });
+      this.logger.log(`Client disconnected: ${clientId}`);
     });
   }
 
@@ -51,7 +44,7 @@ export class GeolocationService {
   ) {
     this.clientLocations.set(clientId, { location, user_id });
 
-    const locations = await this.location.aggregate([
+    const nearbyLocations = await this.location.aggregate([
       {
         $addFields: {
           distance: {
@@ -69,30 +62,68 @@ export class GeolocationService {
           distance: { $lte: 0.0004382872 },
         },
       },
+      {
+        $project: { _id: 1 },
+      },
     ]);
 
-    this.logger.debug('location id', locations);
+    if (!nearbyLocations.length) return [];
 
-    if (locations) {
-      const places = await this.place.find(
-        {
-          location_id: {
-            $in: locations.map((e) => e._id),
-          },
-        },
-        { _id: 1 },
+    const locationIds = nearbyLocations.map((item) => item._id);
+
+    const places = await this.place.find(
+      { location_id: { $in: locationIds } },
+      { _id: 1 },
+    );
+
+    if (!places.length) return [];
+
+    const uniquePlaces = Array.from(
+      new Map(places.map((place) => [String(place._id), place])).values(),
+    );
+
+    const placeIds = uniquePlaces.map((place) => place._id);
+
+    const existingVisits = await this.visit.find(
+      {
+        user_id,
+        place_id: { $in: placeIds },
+      },
+      { place_id: 1 },
+    );
+
+    const blockedPlaceIds = new Set(
+      existingVisits.map((visit) => String(visit.place_id)),
+    );
+
+    const visitsToCreate = uniquePlaces
+      .filter((place) => !blockedPlaceIds.has(String(place._id)))
+      .map((place) => ({
+        place_id: place._id,
+        user_id,
+      }));
+
+    if (!visitsToCreate.length) return [];
+
+    try {
+      const createdVisits = await this.visit.insertMany(visitsToCreate, {
+        ordered: false,
+      });
+
+      this.logger.debug(
+        `Created ${createdVisits.length} processing visit(s) for user ${user_id}`,
       );
 
-      if (places) {
-        const objectToCreate = places.map((place) => ({
-          place_id: place._id,
-          user_id,
-        }));
-        this.logger.debug('PLACE', objectToCreate);
-        const visited = await this.visit.create(objectToCreate);
-
-        return visited;
+      return createdVisits;
+    } catch (error: any) {
+      if (error?.code === 11000 || error?.writeErrors?.length) {
+        this.logger.warn(
+          `Duplicate visit prevented by unique index for user ${user_id}`,
+        );
+        return [];
       }
+
+      throw error;
     }
   }
 }

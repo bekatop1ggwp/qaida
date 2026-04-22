@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument, ObjectId } from 'mongoose';
-
 import { ApiProperty } from '@nestjs/swagger';
 
 export type VisitedDocument = HydratedDocument<VisitedDTO>;
@@ -14,6 +13,8 @@ export class VisitedDTO {
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    required: true,
+    index: true,
   })
   user_id: ObjectId;
 
@@ -21,12 +22,14 @@ export class VisitedDTO {
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Place',
+    required: true,
+    index: true,
   })
   place_id: ObjectId;
 
   @Prop({
     type: Date,
-    default: new Date(),
+    default: Date.now,
   })
   visited_time: Date;
 
@@ -42,3 +45,6 @@ export class VisitedDTO {
 }
 
 export const VisitedSchema = SchemaFactory.createForClass(VisitedDTO);
+
+// Один пользователь -> одна запись на одно место
+VisitedSchema.index({ user_id: 1, place_id: 1 }, { unique: true });
