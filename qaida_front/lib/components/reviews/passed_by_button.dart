@@ -34,20 +34,27 @@ class PassedByButton extends StatelessWidget {
         }
       },
       style: OutlinedButton.styleFrom(
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         foregroundColor: const Color(0xFFFF8A3D),
         side: const BorderSide(
           color: Color(0xFFFFC39A),
+          width: 1,
         ),
         backgroundColor: const Color(0xFFFFF7F1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        visualDensity: VisualDensity.compact,
       ),
-      icon: const Icon(Icons.directions_walk_rounded, size: 18),
+      icon: const Icon(Icons.directions_walk_rounded, size: 15),
       label: const Text(
         'Проходил мимо',
-        style: TextStyle(fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
       ),
     );
   }

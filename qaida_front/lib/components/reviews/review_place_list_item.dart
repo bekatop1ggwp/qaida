@@ -26,26 +26,26 @@ class ReviewPlaceListItem extends StatelessWidget {
     final String? visitedId = place['visited_id']?.toString();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
+            color: Color(0x10000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Column(
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ReviewPlaceListItemImage(url: place['image']?.toString()),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: ReviewPlaceListItemDescription(
                   id: id,
@@ -60,13 +60,15 @@ class ReviewPlaceListItem extends StatelessWidget {
             ],
           ),
           if (!showMode && visitedId != null) ...[
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: PassedByButton(
-                placeId: id,
-                visitedId: visitedId,
-              ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                PassedByButton(
+                  placeId: id,
+                  visitedId: visitedId,
+                ),
+              ],
             ),
           ],
         ],

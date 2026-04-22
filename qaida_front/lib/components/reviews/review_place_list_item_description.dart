@@ -31,18 +31,20 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Text(
           title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
             color: Color(0xFF2D3142),
+            height: 1.15,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           address,
           maxLines: 2,
@@ -50,10 +52,10 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
           style: const TextStyle(
             fontSize: 13,
             color: Color(0xFF7D8597),
-            height: 1.35,
+            height: 1.25,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         if (!showMode)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,13 +68,14 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               RatingBar.builder(
                 itemCount: 5,
                 minRating: 1,
                 allowHalfRating: false,
-                itemSize: 28,
-                unratedColor: const Color(0xFFD7DBE7),
+                itemSize: 26,
+                unratedColor: const Color(0xFFC3CAD9),
+                itemPadding: const EdgeInsets.only(right: 2),
                 itemBuilder: (context, _) => const Icon(
                   Icons.star_rounded,
                   color: Color(0xFFFFC542),
@@ -110,7 +113,7 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
             children: [
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F3F9),
                   borderRadius: BorderRadius.circular(999),
@@ -132,9 +135,9 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                     Icons.star_rounded,
                     color: Color(0xFFFFC542),
                   ),
-                  unratedColor: const Color(0xFFD7DBE7),
+                  unratedColor: const Color(0xFFC3CAD9),
                   itemCount: 5,
-                  itemSize: 22,
+                  itemSize: 20,
                 ),
               if (!hasSavedScore)
                 const Text(
@@ -146,7 +149,7 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                   ),
                 ),
               if ((reviewComment ?? '').trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 Text(
                   reviewComment!,
                   maxLines: 2,
@@ -154,7 +157,7 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF7D8597),
-                    height: 1.35,
+                    height: 1.25,
                   ),
                 ),
               ],

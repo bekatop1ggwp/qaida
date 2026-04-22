@@ -29,8 +29,8 @@ class ReviewPlaceListItemImage extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
-        width: 92,
-        height: 92,
+        width: 74,
+        height: 74,
         child: resolvedUrl == null
             ? Container(
                 color: const Color(0xFFEAECEF),
