@@ -4,6 +4,7 @@ import 'package:qaida/components/q_icon.dart';
 import 'package:qaida/components/q_text.dart';
 import 'package:qaida/components/reviews/my_reviews.dart';
 import 'package:qaida/components/reviews/pending_review.dart';
+import 'package:qaida/components/reviews/review_skeleton.dart';
 import 'package:qaida/providers/review.provider.dart';
 import 'package:qaida/providers/user.provider.dart';
 
@@ -144,9 +145,7 @@ class _ReviewsState extends State<Reviews> {
           future: _processingFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+              return const ReviewSkeleton();
             }
 
             if (snapshot.hasError) {
