@@ -13,8 +13,12 @@ class ReviewInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int processingCount = context.watch<ReviewProvider>().processing.length;
-    int visitedCount = context.watch<UserProvider>().visitedCount;
+    final processingCount = context.watch<ReviewProvider>().processing.length;
+    final visitedCount = context.watch<UserProvider>().visitedCount;
+
+    final total = processingCount + visitedCount;
+    final progress = total == 0 ? 0.0 : (visitedCount / total).clamp(0.0, 1.0);
+
     return SizedBox(
       height: 170,
       width: double.infinity,
@@ -45,7 +49,8 @@ class ReviewInfo extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Оставляя отзыв вы подтверждаете, что посещали данное место. Осталось оценить $processingCount мест${placeEnding(processingCount)}!',
+                  'Оставляя отзыв вы подтверждаете, что посещали данное место.\n'
+                  'Осталось оценить $processingCount мест${placeEnding(processingCount)}!',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -53,7 +58,7 @@ class ReviewInfo extends StatelessWidget {
                   ),
                 ),
                 LinearProgressIndicator(
-                  value: visitedCount / (processingCount + visitedCount),
+                  value: progress,
                   backgroundColor: Colors.grey,
                   valueColor: const AlwaysStoppedAnimation(Colors.green),
                   minHeight: 12.0,
