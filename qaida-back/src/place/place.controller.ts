@@ -3,12 +3,18 @@ import {
   Controller,
   Get,
   Param,
+  Post,
   Put,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBody, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 import { ObjectId } from 'mongoose';
 import { PlacesDTO } from 'src/schema/dtos';
@@ -104,20 +110,45 @@ export class PlaceController {
     return await this.getPlaceService.findByUser(req['user'], status, date);
   }
 
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        count: {
+          type: 'number',
+          example: 5,
+          minimum: 1,
+          maximum: 20,
+        },
+      },
+    },
+    description: 'Создать demo-предложения мест на оценку',
+  })
+  @UseGuards(AuthGuard)
+  @Post('/visited/demo')
+  async createDemoVisitedSuggestions(
+    @Req() req: Request,
+    @Body('count') count: number,
+  ) {
+    return await this.getPlaceService.createDemoProcessingVisits(
+      req['user'],
+      count,
+    );
+  }
+
   @ApiBody({ type: UpdateStatusDto })
   @UseGuards(AuthGuard)
   @Put('/visited/:id')
   async updateStatus(
     @Param('id') _id: ObjectId,
-    @Body()
-    { status }: { status: 'VISITED' | 'PROCESSING' | 'SKIP' },
+    @Body() { status }: { status: 'VISITED' | 'PROCESSING' | 'SKIP' },
   ) {
     return await this.getPlaceService.changeStatus(_id, status);
   }
 
   @ApiResponse({
     description:
-      'Получить по имени с API, не дергать если не хотим выгрузить место. Не трогать с приложения',
+      'Получить по имени с API, не дергать если не хотим выгрузить место.\nНе трогать с приложения',
   })
   @Get('/2gis/:name')
   async loadPlaceFromApi(@Param('name') name: string) {
@@ -126,7 +157,7 @@ export class PlaceController {
 
   @ApiResponse({
     description:
-      'Получить по имени с API, не дергать если не хотим выгрузить место. Не трогать с приложения',
+      'Получить по имени с API, не дергать если не хотим выгрузить место.\nНе трогать с приложения',
   })
   @Get('/2gis/pull/:category_id')
   async getPlacesByCategories(

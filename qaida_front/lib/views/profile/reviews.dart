@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/components/q_icon.dart';
@@ -5,6 +6,7 @@ import 'package:qaida/components/q_text.dart';
 import 'package:qaida/components/reviews/my_reviews.dart';
 import 'package:qaida/components/reviews/pending_review.dart';
 import 'package:qaida/providers/review.provider.dart';
+import 'package:qaida/providers/user.provider.dart';
 
 class Reviews extends StatefulWidget {
   const Reviews({super.key});
@@ -15,6 +17,7 @@ class Reviews extends StatefulWidget {
 
 class _ReviewsState extends State<Reviews> {
   late Future<void> _processingFuture;
+  bool _isCreatingDemo = false;
 
   @override
   void initState() {
@@ -24,12 +27,48 @@ class _ReviewsState extends State<Reviews> {
 
   Future<void> _loadData() async {
     await context.read<ReviewProvider>().getProcessingPlaces();
+    await context.read<UserProvider>().fetchVisitedCount(silent: true);
   }
 
   void _retry() {
     setState(() {
       _processingFuture = _loadData();
     });
+  }
+
+  Future<void> _createDemoSuggestions() async {
+    if (_isCreatingDemo) return;
+
+    setState(() {
+      _isCreatingDemo = true;
+    });
+
+    try {
+      await context.read<ReviewProvider>().createDemoSuggestions(count: 5);
+      await context.read<UserProvider>().fetchVisitedCount(silent: true);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Demo-предложения созданы'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка demo: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreatingDemo = false;
+        });
+      }
+    }
   }
 
   @override
@@ -46,6 +85,20 @@ class _ReviewsState extends State<Reviews> {
             icon: const QIcon(icon: Icons.arrow_back_ios),
           ),
           title: const QText(text: 'Мои отзывы'),
+          actions: [
+            if (kDebugMode)
+              IconButton(
+                tooltip: 'Создать demo-предложения',
+                onPressed: _isCreatingDemo ? null : _createDemoSuggestions,
+                icon: _isCreatingDemo
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome),
+              ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(child: QText(text: 'Ожидают отзыва')),

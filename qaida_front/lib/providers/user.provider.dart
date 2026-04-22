@@ -221,8 +221,10 @@ class UserProvider extends ChangeNotifier {
 
       final List visited = List.from(jsonDecode(response.body));
 
-      final reviewedVisits = visited.where((visit) => visit['status'] == 'VISITED').toList();
-      final processingVisits = visited.where((visit) => visit['status'] == 'PROCESSING').toList();
+      final reviewedVisits =
+          visited.where((visit) => visit['status'] == 'VISITED').toList();
+      final processingVisits =
+          visited.where((visit) => visit['status'] == 'PROCESSING').toList();
 
       visitedPlaces = reviewedVisits.map((visit) {
         final place = Map<String, dynamic>.from(visit['place_id']);
@@ -231,10 +233,7 @@ class UserProvider extends ChangeNotifier {
         return place;
       }).toList();
 
-      // reviewed places count
       visitedCount = reviewedVisits.length;
-
-      // pending-to-review count, если где-то еще понадобится
       reviewCount = processingVisits.length;
 
       await _saveCachedVisitedMeta();

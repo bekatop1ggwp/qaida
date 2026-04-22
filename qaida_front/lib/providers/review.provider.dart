@@ -15,31 +15,27 @@ class ReviewProvider extends ChangeNotifier {
     String placeId,
     String status,
   ) async {
-    try {
-      final String? token =
-          await const FlutterSecureStorage().read(key: 'access_token');
+    final String? token =
+        await const FlutterSecureStorage().read(key: 'access_token');
 
-      final response = await http.put(
-        Uri.parse('$_baseUrl/api/place/visited/$visitedId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({'status': status.toUpperCase()}),
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/place/visited/$visitedId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'status': status.toUpperCase()}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to update visit status: ${response.statusCode} ${response.body}',
       );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Failed to update visit status: ${response.statusCode} ${response.body}',
-        );
-      }
-
-      processing.removeWhere((place) => place['_id'] == placeId);
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) print(e);
-      rethrow;
     }
+
+    processing.removeWhere((place) => place['_id'] == placeId);
+    reviewCount = processing.length;
+    notifyListeners();
   }
 
   Future<void> getProcessingPlaces() async {
@@ -71,37 +67,54 @@ class ReviewProvider extends ChangeNotifier {
   }
 
   Future<void> sendRating(String visitedId, String placeId, int rating) async {
-    try {
-      final String? token =
-          await const FlutterSecureStorage().read(key: 'access_token');
+    final String? token =
+        await const FlutterSecureStorage().read(key: 'access_token');
 
-      final reviewResponse = await http.post(
-        Uri.parse('$_baseUrl/api/review'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'place_id': placeId,
-          'comment': '',
-          'score': rating,
-        }),
+    final reviewResponse = await http.post(
+      Uri.parse('$_baseUrl/api/review'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'place_id': placeId,
+        'comment': '',
+        'score': rating,
+      }),
+    );
+
+    if (reviewResponse.statusCode < 200 || reviewResponse.statusCode >= 300) {
+      throw Exception(
+        'Failed to create review: ${reviewResponse.statusCode} ${reviewResponse.body}',
       );
-
-      if (reviewResponse.statusCode < 200 || reviewResponse.statusCode >= 300) {
-        throw Exception(
-          'Failed to create review: ${reviewResponse.statusCode} ${reviewResponse.body}',
-        );
-      }
-
-      await _changeVisitedStatus(visitedId, placeId, 'VISITED');
-    } catch (e) {
-      if (kDebugMode) print(e);
-      rethrow;
     }
+
+    await _changeVisitedStatus(visitedId, placeId, 'VISITED');
   }
 
   Future<void> skip(String visitedId, String placeId) async {
     await _changeVisitedStatus(visitedId, placeId, 'SKIP');
+  }
+
+  Future<void> createDemoSuggestions({int count = 5}) async {
+    final String? token =
+        await const FlutterSecureStorage().read(key: 'access_token');
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/place/visited/demo'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'count': count}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to create demo suggestions: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    await getProcessingPlaces();
   }
 }

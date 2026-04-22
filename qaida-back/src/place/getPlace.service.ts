@@ -182,4 +182,42 @@ export class GetPlacesService {
     ]);
     return places;
   }
+
+  async createDemoProcessingVisits(user_id: ObjectId, count: number = 5) {
+    const safeCount = Math.max(1, Math.min(count || 5, 20));
+
+    const existingVisits = await this.visit.find(
+      { user_id },
+      { place_id: 1 },
+    );
+
+    const blockedPlaceIds = existingVisits.map((visit) => visit.place_id);
+
+    const candidatePlaces = await this.place.aggregate([
+      {
+        $match: {
+          _id: { $nin: blockedPlaceIds },
+        },
+      },
+      {
+        $sample: { size: safeCount },
+      },
+      {
+        $project: { _id: 1 },
+      },
+    ]);
+
+    if (!candidatePlaces.length) {
+      return [];
+    }
+
+    const docsToCreate = candidatePlaces.map((place) => ({
+      user_id,
+      place_id: place._id,
+      status: 'PROCESSING',
+      visited_time: new Date(),
+    }));
+
+    return await this.visit.insertMany(docsToCreate, { ordered: false });
+  }
 }
