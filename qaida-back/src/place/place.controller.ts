@@ -31,6 +31,14 @@ export class PlaceController {
     private readonly getPlaceService: GetPlacesService,
   ) {}
 
+  @ApiResponse({
+    description: 'Получить все данные для детальной страницы места',
+  })
+  @Get('/place/:id/details')
+  async getPlaceDetails(@Param('id') id: ObjectId): Promise<any> {
+    return await this.getPlaceService.getPlaceDetails(id);
+  }
+  
   @ApiResponse({ type: PlacesDTO })
   @Get('/place/:id')
   async getPlaceById(@Param('id') id: ObjectId) {

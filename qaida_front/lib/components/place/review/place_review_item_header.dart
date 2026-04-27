@@ -37,7 +37,7 @@ class PlaceReviewItemHeader extends StatelessWidget {
             ),
             QText(
               text:
-                  '${user['name'] ?? user['email']} • ${date.substring(0, 10)}',
+                  '${user['name'] ?? user['email'] ?? 'Пользователь'} • ${date.length >= 10 ? date.substring(0, 10) : date}',
             ),
           ],
         ),

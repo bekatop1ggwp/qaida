@@ -16,12 +16,12 @@ class Place extends StatefulWidget {
 }
 
 class _PlaceState extends State<Place> {
-  late Future<void> _placeFuture;
+  late Future<void> _placeDetailsFuture;
 
   @override
   void initState() {
     super.initState();
-    _placeFuture = context.read<PlaceProvider>().getPlaceById();
+    _placeDetailsFuture = context.read<PlaceProvider>().getPlaceDetails();
   }
 
   @override
@@ -36,10 +36,10 @@ class _PlaceState extends State<Place> {
         title: const Search(),
       ),
       body: FutureBuilder<void>(
-        future: _placeFuture,
+        future: _placeDetailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return PlacePageSkeleton();
+            return const PlacePageSkeleton();
           }
 
           if (snapshot.hasError) {
@@ -57,7 +57,7 @@ class _PlaceState extends State<Place> {
           }
 
           return ListView(
-            children: const [
+            children: [
               PlaceHeader(),
               PlaceReviews(),
               MightBeInteresting(),

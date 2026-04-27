@@ -8,6 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId, isObjectIdOrHexString } from 'mongoose';
 import {
   PlaceDocument,
+  ReviewDocument,
   RubricsDocument,
   VisitedDocument,
 } from 'src/schema/dtos';
@@ -20,6 +21,7 @@ export class GetPlacesService {
     @InjectModel('Place') private readonly place: Model<PlaceDocument>,
     @InjectModel('Rubric') private readonly rubric: Model<RubricsDocument>,
     @InjectModel('Visited') private readonly visit: Model<VisitedDocument>,
+    @InjectModel('Review') private readonly review: Model<ReviewDocument>,
   ) {}
 
   async getPlace(categoryId?: string, rubricId?: string) {
@@ -60,6 +62,76 @@ export class GetPlacesService {
       .populate(['schedule_id', 'location_id']);
     if (!place) throw new NotFoundException('Место не найдено');
     return place;
+  }
+
+  public async getPlaceDetails(_id: ObjectId): Promise<any> {
+    if (!isObjectIdOrHexString(_id)) {
+      throw new NotAcceptableException(
+        'Предоставленный ID не является корректным',
+      );
+    }
+
+    const place = await this.place
+      .findById(_id)
+      .populate(['schedule_id', 'location_id', 'category_id'])
+      .lean();
+
+    if (!place) {
+      throw new NotFoundException('Место не найдено');
+    }
+
+    const categoryIds = Array.isArray(place.category_id)
+      ? place.category_id
+          .map((category: any) => category?._id ?? category)
+          .filter(Boolean)
+      : [];
+
+    const [reviews, interestingPlaces] = await Promise.all([
+      this.review
+        .find({ place_id: _id })
+        .sort({ created_at: -1 })
+        .populate(['votes', 'user_id'])
+        .lean(),
+
+      categoryIds.length
+        ? this.place
+            .find({
+              _id: { $ne: place._id },
+              category_id: { $in: categoryIds },
+            })
+            .limit(5)
+            .populate('category_id')
+            .lean()
+        : [],
+    ]);
+
+    const reviewCount = reviews.length;
+
+    const averageRating =
+      reviewCount === 0
+        ? 0
+        : Number(
+            (
+              reviews.reduce((sum: number, review: any) => {
+                const score = review?.score;
+                const normalizedScore =
+                  score?.toString instanceof Function
+                    ? Number(score.toString())
+                    : Number(score ?? 0);
+
+                return sum + normalizedScore;
+              }, 0) / reviewCount
+            ).toFixed(1),
+          );
+
+    return {
+      place,
+      reviewsPreview: reviews.slice(0, 1),
+      reviews,
+      reviewCount,
+      averageRating,
+      interestingPlaces,
+    };
   }
 
   async findByParams(params: IParams) {

@@ -13,8 +13,34 @@ class PlaceReviewItem extends StatelessWidget {
     this.preview = false,
   });
 
+  int _parseScore(dynamic value) {
+    if (value == null) return 0;
+
+    if (value is int) {
+      return value.clamp(0, 5);
+    }
+
+    if (value is double) {
+      return value.round().clamp(0, 5);
+    }
+
+    if (value is num) {
+      return value.round().clamp(0, 5);
+    }
+
+    if (value is Map && value['\$numberDecimal'] != null) {
+      final parsed = double.tryParse(value['\$numberDecimal'].toString()) ?? 0;
+      return parsed.round().clamp(0, 5);
+    }
+
+    final parsed = double.tryParse(value.toString()) ?? 0;
+    return parsed.round().clamp(0, 5);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final score = _parseScore(review['score']);
+
     return Container(
       padding: const EdgeInsets.all(15.0),
       height: 280,
@@ -26,14 +52,16 @@ class PlaceReviewItem extends StatelessWidget {
       child: Column(
         children: [
           PlaceReviewItemHeader(
-            score: int.parse(review['score']['\$numberDecimal']),
-            date: review['created_at'],
-            user: review['user_id'],
+            score: score,
+            date: review['created_at']?.toString() ?? '',
+            user: Map.from(review['user_id'] ?? {}),
           ),
-          PlaceReviewItemBody(comment: review['comment']),
+          PlaceReviewItemBody(
+            comment: review['comment']?.toString() ?? '',
+          ),
           PlaceReviewItemFooter(
             id: review['_id'],
-            votes: review['votes'],
+            votes: List.from(review['votes'] ?? []),
             preview: preview,
           ),
         ],

@@ -19,47 +19,16 @@ class PlaceHeader extends StatelessWidget {
     return value.toString();
   }
 
-  double _toDouble(dynamic value) {
-    if (value == null) return 0;
-
-    if (value is num) {
-      return value.toDouble();
-    }
-
-    if (value is Map && value['\$numberDecimal'] != null) {
-      return double.tryParse(value['\$numberDecimal'].toString()) ?? 0;
-    }
-
-    return double.tryParse(value.toString()) ?? 0;
-  }
-
-  double _calculateAppRating(Map? place) {
-    final scores = List.from(place?['score'] ?? []);
-
-    if (scores.isEmpty) {
-      return 0;
-    }
-
-    final total = scores.fold<double>(
-      0,
-      (sum, score) => sum + _toDouble(score),
-    );
-
-    return total / scores.length;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final place = context.watch<PlaceProvider>().place;
+    final placeProvider = context.watch<PlaceProvider>();
+    final place = placeProvider.place;
+
     final isAuthorized = context.watch<AuthProvider>().isAuthorized;
     final userProvider = context.watch<UserProvider>();
 
     final canUseUser = isAuthorized && userProvider.hasMyself;
-
     final placeId = _extractId(place);
-    final scores = List.from(place?['score'] ?? []);
-    final rating = _calculateAppRating(place);
-    final reviewCount = scores.length;
 
     bool isLiked = false;
 
@@ -112,30 +81,36 @@ class PlaceHeader extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           PlaceRating(
-                            rating: rating,
-                            reviewCount: reviewCount,
+                            rating: placeProvider.averageRating,
+                            reviewCount: placeProvider.reviewCount,
                           ),
                         ],
                       ),
                     ),
                     if (canUseUser)
                       IconButton(
-                        onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
+                        onPressed: place == null
+                            ? null
+                            : () async {
+                                final messenger =
+                                    ScaffoldMessenger.of(context);
 
-                          try {
-                            await context.read<UserProvider>().changeFavPlaces(
-                                  place!,
-                                  !isLiked,
-                                );
-                          } catch (_) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Ошибка. Попробуйте позже'),
-                              ),
-                            );
-                          }
-                        },
+                                try {
+                                  await context
+                                      .read<UserProvider>()
+                                      .changeFavPlaces(
+                                        place,
+                                        !isLiked,
+                                      );
+                                } catch (_) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('Ошибка. Попробуйте позже'),
+                                    ),
+                                  );
+                                }
+                              },
                         icon: Icon(
                           isLiked
                               ? Icons.favorite_rounded
