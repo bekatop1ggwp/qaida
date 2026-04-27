@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:qaida/components/forward_button_text.dart';
 
@@ -7,7 +9,7 @@ class ForwardButton extends StatelessWidget {
   final String? label;
   final bool icon;
   final Icon? leading;
-  final VoidCallback? onPressed;
+  final FutureOr<void> Function()? onPressed;
 
   const ForwardButton({
     super.key,
@@ -22,9 +24,14 @@ class ForwardButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: () {
-        if (onPressed != null) onPressed!();
+      onPressed: () async {
+        if (onPressed != null) {
+          await onPressed!();
+          return;
+        }
+
         if (page == null) return;
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -38,20 +45,22 @@ class ForwardButton extends StatelessWidget {
             child: Row(
               children: [
                 if (leading != null) leading!,
-
-                label == null ?
-                Unlabeled(text: text) :
-                Labeled(label: label!, text: text,),
+                label == null
+                    ? Unlabeled(text: text)
+                    : Labeled(
+                        label: label!,
+                        text: text,
+                      ),
               ],
             ),
           ),
-
-          if (icon) const Icon(
-            Icons.arrow_forward_ios,
-            color: Color(0xFF1E3050),
-          ),
+          if (icon)
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Color(0xFF1E3050),
+            ),
         ],
       ),
     );
   }
-}
+} 

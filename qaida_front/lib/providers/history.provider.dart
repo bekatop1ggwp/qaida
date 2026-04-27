@@ -102,4 +102,11 @@ class HistoryProvider extends ChangeNotifier {
     history = [];
     notifyListeners();
   }
+
+  Future<void> clearHistory() async {
+    await _storage.delete(key: 'history');
+    _placesCache.clear();
+    history = [];
+    notifyListeners();
+  }
 }
