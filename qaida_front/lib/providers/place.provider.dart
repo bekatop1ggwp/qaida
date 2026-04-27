@@ -8,69 +8,112 @@ class PlaceProvider extends ChangeNotifier {
   late String id;
   Map? place;
   List reviews = [];
+  List interestingPlaces = [];
+
+  static const String _baseUrl = 'http://192.168.8.6:8080';
 
   void setId(String id) {
     this.id = id;
+    place = null;
+    reviews = [];
+    interestingPlaces = [];
     notifyListeners();
   }
 
   Future<void> getPlaceById() async {
     try {
-      http.Response response = await http.get(
-        Uri.parse('http://192.168.8.6:8080/api/place/place/$id'),
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/place/place/$id'),
       );
-      place = Map.from(jsonDecode(response.body));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Place loading failed: ${response.statusCode}');
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! Map) {
+        throw Exception('Invalid place response');
+      }
+
+      place = Map.from(decoded);
       notifyListeners();
     } catch (e) {
       if (kDebugMode) print(e);
+      rethrow;
     }
   }
 
-  Future getInterestingPlaces(String categoryId) async {
+  Future<List> getInterestingPlaces(String categoryId) async {
     try {
-      http.Response response = await http.get(
-        Uri.parse(
-          'http://192.168.8.6:8080/api/place/search-category?category_id=$categoryId',
-        ),
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/place/search-category?category_id=$categoryId'),
       );
-      return List.from(jsonDecode(response.body));
-    } catch(e) {
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Interesting places loading failed: ${response.statusCode}');
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! List) {
+        throw Exception('Invalid interesting places response');
+      }
+
+      interestingPlaces = List.from(decoded);
+      return interestingPlaces;
+    } catch (e) {
       if (kDebugMode) print(e);
+      rethrow;
     }
   }
 
   Future<List> getPlaceReview() async {
     try {
-      http.Response response = await http.get(
-        Uri.parse(
-          'http://192.168.8.6:8080/api/review/$id',
-        ),
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/review/$id'),
       );
-      List reviews = List.from(jsonDecode(response.body));
-      this.reviews = reviews;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Reviews loading failed: ${response.statusCode}');
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      if (decoded is! List) {
+        throw Exception('Invalid reviews response');
+      }
+
+      reviews = List.from(decoded);
       return reviews;
-    } catch(_) {
+    } catch (e) {
+      if (kDebugMode) print(e);
       rethrow;
     }
   }
 
-  Future voteReview(String reviewId, String type) async {
+  Future<void> voteReview(String reviewId, String type) async {
     try {
       const storage = FlutterSecureStorage();
-      String? token = await storage.read(key: 'access_token');
+      final token = await storage.read(key: 'access_token');
 
-      await http.post(
-        Uri.parse('http://192.168.8.6:8080/api/review/vote/$reviewId'),
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/review/vote/$reviewId'),
         headers: {
           'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
         },
         body: json.encode({
           'type': type,
         }),
       );
-    } catch(e) {
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Vote failed: ${response.statusCode}');
+      }
+    } catch (e) {
       if (kDebugMode) print(e);
+      rethrow;
     }
   }
-
 }

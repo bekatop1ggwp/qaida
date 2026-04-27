@@ -9,6 +9,45 @@ import 'package:qaida/providers/user.provider.dart';
 class PlaceHeader extends StatelessWidget {
   const PlaceHeader({super.key});
 
+  String? _extractId(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Map) {
+      return value['_id']?.toString();
+    }
+
+    return value.toString();
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0;
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is Map && value['\$numberDecimal'] != null) {
+      return double.tryParse(value['\$numberDecimal'].toString()) ?? 0;
+    }
+
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  double _calculateAppRating(Map? place) {
+    final scores = List.from(place?['score'] ?? []);
+
+    if (scores.isEmpty) {
+      return 0;
+    }
+
+    final total = scores.fold<double>(
+      0,
+      (sum, score) => sum + _toDouble(score),
+    );
+
+    return total / scores.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final place = context.watch<PlaceProvider>().place;
@@ -17,10 +56,16 @@ class PlaceHeader extends StatelessWidget {
 
     final canUseUser = isAuthorized && userProvider.hasMyself;
 
+    final placeId = _extractId(place);
+    final scores = List.from(place?['score'] ?? []);
+    final rating = _calculateAppRating(place);
+    final reviewCount = scores.length;
+
     bool isLiked = false;
-    if (canUseUser) {
+
+    if (canUseUser && placeId != null) {
       isLiked = userProvider.myself.favorites.any(
-        (favPlace) => favPlace['_id'] == place?['_id'],
+        (favPlace) => _extractId(favPlace) == placeId,
       );
     }
 
@@ -56,12 +101,19 @@ class PlaceHeader extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(place?['title'] ?? ''),
-                          PlaceRating(
-                            rating: double.parse(
-                              place?['score_2gis']['\$numberDecimal'],
+                          Text(
+                            place?['title']?.toString() ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
-                            reviewCount: List.from(place?['score'] ?? []).length,
+                          ),
+                          const SizedBox(height: 4),
+                          PlaceRating(
+                            rating: rating,
+                            reviewCount: reviewCount,
                           ),
                         ],
                       ),
@@ -70,6 +122,7 @@ class PlaceHeader extends StatelessWidget {
                       IconButton(
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);
+
                           try {
                             await context.read<UserProvider>().changeFavPlaces(
                                   place!,
@@ -83,11 +136,14 @@ class PlaceHeader extends StatelessWidget {
                             );
                           }
                         },
-                        icon: const Icon(Icons.thumb_up_rounded),
-                        style: ButtonStyle(
-                          iconColor: WidgetStatePropertyAll(
-                            isLiked ? Colors.orange : Colors.grey,
-                          ),
+                        icon: Icon(
+                          isLiked
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: isLiked
+                              ? const Color(0xFFE94057)
+                              : const Color(0xFF98A2B3),
+                          size: 28,
                         ),
                       ),
                   ],
