@@ -6,24 +6,29 @@
 - `qaida-back/knn-service` — Python recommendation service
 - `qaida_front` — Flutter mobile app
 
+---
+
 ## 1. Requirements
 
 ### Backend
+
 - Node.js 18+
 - pnpm
 - MongoDB
 
-### Mobile
-- Flutter SDK
-- Android Studio
-- Android SDK
-- Android emulator
-- JDK 17
-
 ### Recommendation service
+
 - Python 3.10
 - pip
 - virtualenv
+
+### Mobile
+
+- Flutter SDK
+- Android Studio
+- Android SDK
+- Android emulator или физическое Android-устройство
+- JDK 17
 
 ---
 
@@ -31,19 +36,23 @@
 
 Хранить проект лучше в папке без кириллицы:
 
-- `C:\Qaida\qaida-back`
-- `C:\Qaida\qaida_front`
+```text
+C:\Qaida\qaida-back
+C:\Qaida\qaida_front
+```
 
 ---
 
 ## 3. Backend setup
 
+Перейти в папку backend:
+
 ```powershell
 cd C:\Qaida\qaida-back
 pnpm install
-````
+```
 
-Создать файл:
+Создать файл окружения:
 
 ```text
 src/core/.env
@@ -74,6 +83,8 @@ http://localhost:8080/swagger
 ---
 
 ## 4. Recommendation service setup
+
+Перейти в папку KNN-сервиса:
 
 ```powershell
 cd C:\Qaida\qaida-back\knn-service
@@ -107,6 +118,8 @@ Body:
 
 ## 5. Flutter setup
 
+Перейти в папку мобильного приложения:
+
 ```powershell
 cd C:\Qaida\qaida_front
 flutter pub get
@@ -121,46 +134,60 @@ flutter config --jdk-dir "C:\Program Files\Java\jdk-17.0.1"
 
 ---
 
-## 6. Recommendation API URL
+## 6. API configuration in Flutter
 
-Во Flutter recommendation service передаётся через `dart-define`.
+Адреса backend и recommendation service задаются в одном месте:
 
-Для Android emulator:
-
-```powershell
-flutter run -d emulator-5554 --dart-define="RECOMMENDATION_API_URL=http://10.0.2.2:8001"
+```text
+lib/core/api_config.dart
 ```
 
-Для реального телефона в одной Wi-Fi сети с ноутбуком:
+Также адреса можно переопределить при запуске через `dart-define`:
 
 ```powershell
-flutter run --dart-define="RECOMMENDATION_API_URL=http://192.168.8.6:8001"
+flutter run --dart-define=API_BASE_URL=http://YOUR_BACKEND_HOST:8080 --dart-define=RECOMMENDATION_API_URL=http://YOUR_RECOMMENDATION_HOST:8001
+```
+
+### Android Emulator
+
+Если backend и recommendation service запущены на той же машине, где запущен Android Emulator, используй стандартный адрес эмулятора:
+
+```powershell
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
+```
+
+### Physical Android device
+
+Если приложение запускается на физическом телефоне, backend должен быть доступен по IP компьютера в одной Wi-Fi сети:
+
+```powershell
+flutter run --dart-define=API_BASE_URL=http://YOUR_LOCAL_NETWORK_IP:8080 --dart-define=RECOMMENDATION_API_URL=http://YOUR_LOCAL_NETWORK_IP:8001
 ```
 
 ---
 
 ## 7. Network notes
 
-Для Android emulator:
+Для Android Emulator:
 
-* backend: `10.0.2.2:8080`
-* recommendation service: `10.0.2.2:8001`
+- backend: `10.0.2.2:8080`
+- recommendation service: `10.0.2.2:8001`
 
-Для реального телефона:
+Для физического телефона:
 
-* backend: `192.168.8.6:8080`
-* recommendation service: `192.168.8.6:8001`
+- backend: `YOUR_LOCAL_NETWORK_IP:8080`
+- recommendation service: `YOUR_LOCAL_NETWORK_IP:8001`
 
-Если IP ноутбука изменится, его нужно обновить.
+Если IP компьютера изменится, его нужно указать заново через `--dart-define` или обновить значения по умолчанию в `lib/core/api_config.dart`.
 
 ---
 
 ## 8. Firewall
 
-Чтобы телефон мог достучаться до backend и recommendation service, должны быть открыты порты:
+Чтобы физический телефон мог достучаться до backend и recommendation service, должны быть открыты порты:
 
-* `8080`
-* `8001`
+- `8080`
+- `8001`
 
 PowerShell от имени администратора:
 
@@ -188,20 +215,20 @@ cd C:\Qaida\qaida-back\knn-service
 python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-### Terminal 3 — Flutter (Android emulator)
+### Terminal 3 — Flutter on Android Emulator
 
 ```powershell
 cd C:\Qaida\qaida_front
 flutter pub get
-flutter run -d emulator-5554 --dart-define="RECOMMENDATION_API_URL=http://10.0.2.2:8001"
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
 ```
 
-### Terminal 3 — Flutter (real phone)
+### Terminal 3 — Flutter on physical Android device
 
 ```powershell
 cd C:\Qaida\qaida_front
 flutter pub get
-flutter run --dart-define="RECOMMENDATION_API_URL=http://192.168.8.6:8001"
+flutter run --dart-define=API_BASE_URL=http://YOUR_LOCAL_NETWORK_IP:8080 --dart-define=RECOMMENDATION_API_URL=http://YOUR_LOCAL_NETWORK_IP:8001
 ```
 
 ---
@@ -209,6 +236,7 @@ flutter run --dart-define="RECOMMENDATION_API_URL=http://192.168.8.6:8001"
 ## 10. APK build
 
 ```powershell
+cd C:\Qaida\qaida_front
 flutter build apk --debug
 ```
 

@@ -14,18 +14,23 @@ qaida_front/.idea/
 qaida_front/*.iml
 
 # Node / Nest
-qaida_back/node_modules/
-qaida_back/dist/
-qaida_back/.pnpm-store/
+qaida-back/node_modules/
+qaida-back/dist/
+qaida-back/.pnpm-store/
 
 # Python
-qaida_back/knn-service/venv/
-qaida_back/knn-service/__pycache__/
-qaida_back/cosine-service/venv/
-qaida_back/cosine-service/__pycache__/
+qaida-back/node_modules/
+qaida-back/dist/
+qaida-back/.pnpm-store/
+qaida-back/knn-service/venv/
+qaida-back/knn-service/__pycache__/
+qaida-back/knn-service/Model/__pycache__/
+qaida-back/cosine-service/venv/
+qaida-back/cosine-service/__pycache__/
+qaida-back/cosine-service/Model/__pycache__/
 
 # Env
-qaida_back/src/core/.env
+qaida-back/src/core/.env
 
 # OS
 .DS_Store
