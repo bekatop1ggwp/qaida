@@ -21,29 +21,50 @@ class Authorized extends StatefulWidget {
 }
 
 class _AuthorizedState extends State<Authorized> {
-  Future<void>? _historyFuture;
   bool _historyLoaded = false;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     _prepareInitialProfile();
-    _historyFuture = _loadHistory();
+    _loadHistory();
   }
 
   Future<void> _prepareInitialProfile() async {
-    final userProvider = context.read<UserProvider>();
-
     Future.microtask(() async {
-      await userProvider.refreshProfileInBackground();
+      await context.read<UserProvider>().refreshProfileInBackground();
     });
   }
 
   Future<void> _loadHistory() async {
     await context.read<HistoryProvider>().loadHistory();
-    if (mounted) {
+
+    if (!mounted) return;
+
+    setState(() {
+      _historyLoaded = true;
+    });
+  }
+
+  Future<void> _refreshProfilePage() async {
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      await Future.wait([
+        context.read<UserProvider>().refreshProfileInBackground(),
+        context.read<HistoryProvider>().loadHistory(),
+      ]);
+    } finally {
+      if (!mounted) return;
+
       setState(() {
         _historyLoaded = true;
+        _isRefreshing = false;
       });
     }
   }
@@ -55,29 +76,35 @@ class _AuthorizedState extends State<Authorized> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F6),
       appBar: const AuthProfileBar(),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
-        children: [
-          if (!_historyLoaded)
-            const HistorySkeleton()
-          else if (history.isNotEmpty)
-            History(history: history),
-          const LightContainer(
-            margin: EdgeInsets.fromLTRB(20, 8, 20, 12),
-            children: [
-              ForwardButton(text: 'Сохраненные', page: Favorites()),
-              ForwardButton(text: 'Посещенные места', page: Visits()),
-              ForwardButton(text: 'Оставленные отзывы', page: Reviews()),
-            ],
-          ),
-          const LightContainer(
-            margin: EdgeInsets.fromLTRB(20, 0, 20, 16),
-            children: [
-              ForwardButton(text: 'Настройки', page: Settings()),
-              ForwardButton(text: 'О нас', page: AboutUs()),
-            ],
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _refreshProfilePage,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+          children: [
+            if (!_historyLoaded)
+              const HistorySkeleton()
+            else if (history.isNotEmpty)
+              History(history: history)
+            else
+              const SizedBox(height: 8),
+            const LightContainer(
+              margin: EdgeInsets.fromLTRB(20, 8, 20, 12),
+              children: [
+                ForwardButton(text: 'Сохраненные', page: Favorites()),
+                ForwardButton(text: 'Посещенные места', page: Visits()),
+                ForwardButton(text: 'Оставленные отзывы', page: Reviews()),
+              ],
+            ),
+            const LightContainer(
+              margin: EdgeInsets.fromLTRB(20, 0, 20, 16),
+              children: [
+                ForwardButton(text: 'Настройки', page: Settings()),
+                ForwardButton(text: 'О нас', page: AboutUs()),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
