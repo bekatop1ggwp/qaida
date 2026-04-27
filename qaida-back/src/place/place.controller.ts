@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -38,7 +39,7 @@ export class PlaceController {
   async getPlaceDetails(@Param('id') id: ObjectId): Promise<any> {
     return await this.getPlaceService.getPlaceDetails(id);
   }
-  
+
   @ApiResponse({ type: PlacesDTO })
   @Get('/place/:id')
   async getPlaceById(@Param('id') id: ObjectId) {
@@ -116,6 +117,18 @@ export class PlaceController {
   ) {
     console.log(typeof date);
     return await this.getPlaceService.findByUser(req['user'], status, date);
+  }
+
+  @ApiResponse({
+    description:
+      'Удалить историю посещений текущего пользователя без удаления отзывов',
+  })
+  @UseGuards(AuthGuard)
+  @Delete('/visited/history')
+  async clearVisitedHistory(@Req() req: Request) {
+    const userId = req['user']?._id ?? req['user']?.id ?? req['user'];
+
+    return await this.getPlaceService.clearVisitedHistory(userId);
   }
 
   @ApiBody({

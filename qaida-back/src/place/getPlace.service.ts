@@ -230,6 +230,17 @@ export class GetPlacesService {
     return await this.visit.find(query).populate(['place_id', 'user_id']);
   }
 
+  async clearVisitedHistory(user_id: ObjectId): Promise<{ deletedCount: number }> {
+    const result = await this.visit.deleteMany({
+      user_id,
+      status: 'VISITED',
+    });
+
+    return {
+      deletedCount: result.deletedCount ?? 0,
+    };
+  }
+
   async changeStatus(
     visit_id: ObjectId,
     status: 'VISITED' | 'PROCESSING' | 'SKIP',

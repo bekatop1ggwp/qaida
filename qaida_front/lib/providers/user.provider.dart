@@ -198,6 +198,7 @@ class UserProvider extends ChangeNotifier {
 
   Future fetchVisitedCount({bool silent = false}) async {
     final sw = Stopwatch()..start();
+
     try {
       final String? token = await _storage.read(key: 'access_token');
 
@@ -209,18 +210,34 @@ class UserProvider extends ChangeNotifier {
         return;
       }
 
-      final response = await http.get(
-        Uri.parse('$_baseUrl/api/place/visited'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final responses = await Future.wait([
+        http.get(
+          Uri.parse('$_baseUrl/api/place/visited'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        http.get(
+          Uri.parse('$_baseUrl/api/review/me'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      ]);
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Failed to load visited: ${response.statusCode}');
+      final visitedResponse = responses[0];
+      final reviewsResponse = responses[1];
+
+      if (visitedResponse.statusCode < 200 || visitedResponse.statusCode >= 300) {
+        throw Exception('Failed to load visited: ${visitedResponse.statusCode}');
       }
 
-      final List visited = List.from(jsonDecode(response.body));
+      if (reviewsResponse.statusCode < 200 || reviewsResponse.statusCode >= 300) {
+        throw Exception('Failed to load reviews: ${reviewsResponse.statusCode}');
+      }
+
+      final List visited = List.from(jsonDecode(visitedResponse.body));
+      final List reviews = List.from(jsonDecode(reviewsResponse.body));
 
       final reviewedVisits =
           visited.where((visit) => visit['status'] == 'VISITED').toList();
@@ -233,10 +250,11 @@ class UserProvider extends ChangeNotifier {
       }).toList();
 
       visitedCount = reviewedVisits.length;
-      reviewCount = reviewedVisits.length;
+      reviewCount = reviews.length;
 
       await _saveCachedVisitedMeta();
-      notifyListeners();
+
+      if (!silent) notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('fetchVisitedCount error: $e');
@@ -424,6 +442,38 @@ class UserProvider extends ChangeNotifier {
       }
 
       await getMe();
+    } catch (e) {
+      if (kDebugMode) print(e);
+      rethrow;
+    }
+  }
+
+  Future<void> clearVisitedHistory() async {
+    try {
+      final String? token = await _storage.read(key: 'access_token');
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Token not found');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/api/place/visited/history'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          'Failed to clear visited history: ${response.statusCode} ${response.body}',
+        );
+      }
+
+      visitedPlaces = [];
+      visitedCount = 0;
+
+      await _saveCachedVisitedMeta();
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) print(e);
       rethrow;

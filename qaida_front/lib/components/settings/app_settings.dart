@@ -4,6 +4,7 @@ import 'package:qaida/components/forward_button.dart';
 import 'package:qaida/components/light_container.dart';
 import 'package:qaida/providers/history.provider.dart';
 import 'package:qaida/views/interests.dart';
+import 'package:qaida/providers/user.provider.dart';
 
 class AppSettings extends StatelessWidget {
   const AppSettings({super.key});
@@ -56,9 +57,44 @@ class AppSettings extends StatelessWidget {
             );
           },
         ),
-        const ForwardButton(
+        ForwardButton(
           text: 'Удалить историю посещений',
           icon: false,
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) {
+                return AlertDialog(
+                  title: const Text('Удалить историю посещений?'),
+                  content: const Text(
+                    'Будут удалены только записи о посещенных местах. Ваши отзывы, оценки, избранное и профиль не будут затронуты.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('Отмена'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('Удалить'),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            if (confirmed != true) return;
+
+            await context.read<UserProvider>().clearVisitedHistory();
+
+            if (!context.mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('История посещений удалена'),
+              ),
+            );
+          },
         ),
       ],
     );
