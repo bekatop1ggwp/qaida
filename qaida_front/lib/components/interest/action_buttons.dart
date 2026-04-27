@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/providers/interests.provider.dart';
 import 'package:qaida/providers/template.provider.dart';
-import 'package:qaida/providers/theme.provider.dart';
 import 'package:qaida/providers/user.provider.dart';
 
 class ActionButtons extends StatefulWidget {
@@ -20,7 +21,7 @@ class _ActionButtonsState extends State<ActionButtons> {
     final interestsProvider = context.read<InterestsProvider>();
     final userProvider = context.read<UserProvider>();
 
-    final List<String> selectedIds = interestsProvider.getSelectedIds();
+    final List<String> interests = interestsProvider.getSelectedIds();
 
     const storage = FlutterSecureStorage();
     final String? token = await storage.read(key: 'access_token');
@@ -29,20 +30,11 @@ class _ActionButtonsState extends State<ActionButtons> {
       throw Exception('Access token not found');
     }
 
-    await interestsProvider.sendInterests(token, selectedIds);
+    await interestsProvider.sendInterests(token, interests);
 
-    final selectedInterestObjects = interestsProvider.interests.where((interest) {
-      return selectedIds.contains(interest['_id']?.toString());
-    }).toList();
-
-    await userProvider.updateInterestsLocally(selectedInterestObjects);
-
-    Future.microtask(() async {
-      try {
-        await userProvider.getMe(silent: true);
-        userProvider.notifyProfileReady();
-      } catch (_) {}
-    });
+    unawaited(
+      userProvider.getMe(silent: true).catchError((_) {}),
+    );
   }
 
   void navToHome(BuildContext context) {
@@ -87,32 +79,29 @@ class _ActionButtonsState extends State<ActionButtons> {
     final int selectedCount =
         provider.selectedItems.where((element) => element).length;
 
-    final Color blue = context.read<ThemeProvider>().lightBlack;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+    return Container(
+      padding: const EdgeInsets.only(top: 10),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF2F3F6),
+      ),
       child: Row(
         children: [
           Expanded(
             child: SizedBox(
               height: 54,
-              child: ElevatedButton(
+              child: TextButton(
                 onPressed: _isSaving ? null : () => navToHome(context),
-                style: ElevatedButton.styleFrom(
-                  elevation: 0,
-                  backgroundColor: const Color(0xFFE9E9EC),
-                  foregroundColor: blue,
-                  disabledBackgroundColor: const Color(0xFFE9E9EC),
-                  disabledForegroundColor: blue.withOpacity(0.5),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF243C6B),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: const Text(
                   'Пропустить',
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -126,12 +115,12 @@ class _ActionButtonsState extends State<ActionButtons> {
                 onPressed: _isSaving ? null : () => _onNextPressed(context),
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
-                  backgroundColor: blue,
+                  backgroundColor: const Color(0xFF243C6B),
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: blue.withOpacity(0.65),
+                  disabledBackgroundColor: const Color(0xFF243C6B).withOpacity(0.65),
                   disabledForegroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 child: _isSaving
@@ -147,7 +136,7 @@ class _ActionButtonsState extends State<ActionButtons> {
                         'Далее ($selectedCount)',
                         style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
               ),
