@@ -6,11 +6,13 @@ import 'package:qaida/components/reviews/review_place_list_item_image.dart';
 class ReviewPlaceListItem extends StatelessWidget {
   final Map place;
   final bool showMode;
+  final Future<void> Function(Map place)? onDelete;
 
   const ReviewPlaceListItem({
     super.key,
     required this.place,
     this.showMode = false,
+    this.onDelete,
   });
 
   double? _toDouble(dynamic value) {
@@ -24,6 +26,7 @@ class ReviewPlaceListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final String id = place['_id']?.toString() ?? '';
     final String? visitedId = place['visited_id']?.toString();
+    final String? reviewId = place['review_id']?.toString();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -57,6 +60,15 @@ class ReviewPlaceListItem extends StatelessWidget {
                   reviewComment: place['review_comment']?.toString(),
                 ),
               ),
+              if (showMode && reviewId != null && onDelete != null)
+                IconButton(
+                  tooltip: 'Удалить отзыв',
+                  onPressed: () => onDelete!(place),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFE94057),
+                  ),
+                ),
             ],
           ),
           if (!showMode && visitedId != null) ...[

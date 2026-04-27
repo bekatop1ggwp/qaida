@@ -132,7 +132,7 @@ export class GetPlacesService {
       seenInterestingPlaceKeys.add(uniqueKey);
       interestingPlaces.push(item);
 
-      if (interestingPlaces.length >= 6) {
+      if (interestingPlaces.length >= 5) {
         break;
       }
     }

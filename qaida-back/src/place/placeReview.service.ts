@@ -47,6 +47,39 @@ export class PlaceReviewService {
       .populate(['place_id', 'user_id', 'votes']);
   }
 
+  async deleteMyReview(
+    review_id: ObjectId,
+    user_id: ObjectId,
+  ): Promise<{ deleted: boolean }> {
+    const review = await this.review.findOne({
+      _id: review_id,
+      user_id,
+    });
+
+    if (!review) {
+      throw new NotFoundException('Отзыв не найден');
+    }
+
+    const voteIds = Array.isArray(review.votes) ? review.votes : [];
+
+    if (voteIds.length > 0) {
+      await this.vote.deleteMany({
+        _id: {
+          $in: voteIds,
+        },
+      });
+    }
+
+    await this.review.deleteOne({
+      _id: review_id,
+      user_id,
+    });
+
+    return {
+      deleted: true,
+    };
+  }
+
   async addReview(payload: ReviewDTO) {
     if (payload.score)
       await this.place.findByIdAndUpdate(payload.place_id, {

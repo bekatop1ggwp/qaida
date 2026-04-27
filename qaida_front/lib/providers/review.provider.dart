@@ -109,6 +109,30 @@ class ReviewProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteMyReview(String reviewId) async {
+    final token = await _getToken();
+
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/api/review/$reviewId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to delete review: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    myReviews.removeWhere(
+      (place) => place['review_id']?.toString() == reviewId,
+    );
+
+    reviewCount = myReviews.length;
+    notifyListeners();
+  }
+
   Future<void> refreshAll() async {
     await Future.wait([
       getProcessingPlaces(),
