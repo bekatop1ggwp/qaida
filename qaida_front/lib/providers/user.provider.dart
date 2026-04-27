@@ -196,6 +196,14 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateInterestsLocally(List interests) async {
+    if (!_hasMyself) return;
+
+    _myself.interests = List.from(interests);
+    await _saveCachedUser();
+    notifyListeners();
+  }
+
   Future fetchVisitedCount({bool silent = false}) async {
     final sw = Stopwatch()..start();
 

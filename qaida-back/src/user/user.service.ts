@@ -127,20 +127,22 @@ export class UserService {
   }
 
   public async insertInterests(payload: ObjectId[], user_id: ObjectId) {
-    const existCategories = await this.rubric.find({
-      _id: { $in: payload },
+    const uniquePayload = [...new Set(payload.map((id) => id.toString()))];
+
+    const existCategoriesCount = await this.rubric.countDocuments({
+      _id: { $in: uniquePayload },
     });
 
-    if (existCategories.length !== payload.length) {
+    if (existCategoriesCount !== uniquePayload.length) {
       throw new MethodNotAllowedException('Значения не допустимы');
     }
 
-    const user = await this.user.findOne({ _id: user_id });
+    const user = await this.user.exists({ _id: user_id });
     if (!user) throw new UnauthorizedException('Пользователь не найден');
 
     return await this.updateUserInDB(
       {
-        interests: payload,
+        interests: uniquePayload,
       },
       user_id,
     );

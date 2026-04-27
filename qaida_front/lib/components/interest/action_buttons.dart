@@ -6,12 +6,21 @@ import 'package:qaida/providers/template.provider.dart';
 import 'package:qaida/providers/theme.provider.dart';
 import 'package:qaida/providers/user.provider.dart';
 
-class ActionButtons extends StatelessWidget {
+class ActionButtons extends StatefulWidget {
   const ActionButtons({super.key});
 
+  @override
+  State<ActionButtons> createState() => _ActionButtonsState();
+}
+
+class _ActionButtonsState extends State<ActionButtons> {
+  bool _isSaving = false;
+
   Future<void> handleSend(BuildContext context) async {
-    final List<String> interests =
-        context.read<InterestsProvider>().getSelectedIds();
+    final interestsProvider = context.read<InterestsProvider>();
+    final userProvider = context.read<UserProvider>();
+
+    final List<String> selectedIds = interestsProvider.getSelectedIds();
 
     const storage = FlutterSecureStorage();
     final String? token = await storage.read(key: 'access_token');
@@ -20,14 +29,56 @@ class ActionButtons extends StatelessWidget {
       throw Exception('Access token not found');
     }
 
-    await context.read<InterestsProvider>().sendInterests(token, interests);
-    await context.read<UserProvider>().getMe();
+    await interestsProvider.sendInterests(token, selectedIds);
+
+    final selectedInterestObjects = interestsProvider.interests.where((interest) {
+      return selectedIds.contains(interest['_id']?.toString());
+    }).toList();
+
+    await userProvider.updateInterestsLocally(selectedInterestObjects);
+
+    Future.microtask(() async {
+      try {
+        await userProvider.getMe(silent: true);
+        userProvider.notifyProfileReady();
+      } catch (_) {}
+    });
   }
 
   void navToHome(BuildContext context) {
     Navigator.pop(context);
     Navigator.pop(context);
     context.read<TemplateProvider>().changeTemplatePage(0);
+  }
+
+  Future<void> _onNextPressed(BuildContext context) async {
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await handleSend(context);
+
+      if (!context.mounted) return;
+
+      navToHome(context);
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Не удалось сохранить интересы: $e'),
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isSaving = false;
+      });
+    }
   }
 
   @override
@@ -46,13 +97,13 @@ class ActionButtons extends StatelessWidget {
             child: SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: () {
-                  navToHome(context);
-                },
+                onPressed: _isSaving ? null : () => navToHome(context),
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: const Color(0xFFE9E9EC),
                   foregroundColor: blue,
+                  disabledBackgroundColor: const Color(0xFFE9E9EC),
+                  disabledForegroundColor: blue.withOpacity(0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -72,37 +123,33 @@ class ActionButtons extends StatelessWidget {
             child: SizedBox(
               height: 54,
               child: ElevatedButton(
-                onPressed: () async {
-                  try {
-                    await handleSend(context);
-                    if (context.mounted) {
-                      navToHome(context);
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Не удалось сохранить интересы: $e'),
-                        ),
-                      );
-                    }
-                  }
-                },
+                onPressed: _isSaving ? null : () => _onNextPressed(context),
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: blue,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: blue.withOpacity(0.65),
+                  disabledForegroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: Text(
-                  'Далее ($selectedCount)',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        'Далее ($selectedCount)',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ),
