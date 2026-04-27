@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qaida/core/api_config.dart';
 
 class ReviewPlaceListItemImage extends StatelessWidget {
   final String? url;
@@ -8,23 +9,9 @@ class ReviewPlaceListItemImage extends StatelessWidget {
     required this.url,
   });
 
-  String? _resolveUrl(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return null;
-
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      return raw;
-    }
-
-    if (raw.startsWith('/')) {
-      return 'http://192.168.8.6:8080$raw';
-    }
-
-    return 'http://192.168.8.6:8080/$raw';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final resolvedUrl = _resolveUrl(url);
+    final resolvedUrl = ApiConfig.resolveFileUrl(url);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),

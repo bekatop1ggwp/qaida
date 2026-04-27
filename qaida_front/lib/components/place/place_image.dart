@@ -1,34 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/providers/place.provider.dart';
+import 'package:qaida/core/api_config.dart';
 
 class PlaceImage extends StatelessWidget {
   const PlaceImage({super.key});
 
-  static const String _baseUrl = 'http://192.168.8.6:8080';
-
-  String? _resolveImageUrl(dynamic value) {
-    final raw = value?.toString().trim();
-
-    if (raw == null || raw.isEmpty || raw == 'null') {
-      return null;
-    }
-
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      return raw;
-    }
-
-    if (raw.startsWith('/')) {
-      return '$_baseUrl$raw';
-    }
-
-    return '$_baseUrl/$raw';
-  }
-
   @override
   Widget build(BuildContext context) {
     final place = context.watch<PlaceProvider>().place;
-    final imageUrl = _resolveImageUrl(place?['image']);
+    final imageUrl = ApiConfig.resolveFileUrl(place?['image']);
 
     return SizedBox(
       width: double.infinity,

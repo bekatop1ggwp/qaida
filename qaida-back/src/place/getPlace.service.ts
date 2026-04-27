@@ -86,11 +86,18 @@ export class GetPlacesService {
           .filter(Boolean)
       : [];
 
-    const [reviews, interestingPlaces] = await Promise.all([
+    const [reviews, interestingPlaceCandidates] = await Promise.all([
       this.review
         .find({ place_id: _id })
         .sort({ created_at: -1 })
-        .populate(['votes', 'user_id'])
+        .populate({
+          path: 'user_id',
+          select: 'name surname email image_id',
+        })
+        .populate({
+          path: 'votes',
+          select: 'type user_id',
+        })
         .lean(),
 
       categoryIds.length
@@ -99,11 +106,36 @@ export class GetPlacesService {
               _id: { $ne: place._id },
               category_id: { $in: categoryIds },
             })
-            .limit(5)
+            .sort({
+              score_2gis: -1,
+              title: 1,
+            })
+            .limit(20)
             .populate('category_id')
             .lean()
         : [],
     ]);
+
+    const seenInterestingPlaceKeys = new Set<string>();
+    const interestingPlaces = [];
+
+    for (const item of interestingPlaceCandidates as any[]) {
+      const title = item?.title?.toString().trim().toLowerCase() ?? '';
+      const address = item?.address?.toString().trim().toLowerCase() ?? '';
+
+      const uniqueKey = `${title}|${address}`;
+
+      if (!title || seenInterestingPlaceKeys.has(uniqueKey)) {
+        continue;
+      }
+
+      seenInterestingPlaceKeys.add(uniqueKey);
+      interestingPlaces.push(item);
+
+      if (interestingPlaces.length >= 6) {
+        break;
+      }
+    }
 
     const reviewCount = reviews.length;
 

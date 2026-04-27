@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:socket_io_client/socket_io_client.dart';
+import 'package:qaida/core/api_config.dart';
 
 class GeolocationProvider extends ChangeNotifier {
   Socket? socket;
@@ -33,7 +34,7 @@ class GeolocationProvider extends ChangeNotifier {
 
     socket?.dispose();
     socket = io(
-      'http://192.168.8.6:8080/geolocation',
+      ApiConfig.geolocationSocketUrl,
       OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:qaida/core/api_config.dart';
 
 class PlaceProvider extends ChangeNotifier {
   late String id;
@@ -15,7 +16,7 @@ class PlaceProvider extends ChangeNotifier {
   int reviewCount = 0;
   double averageRating = 0;
 
-  static const String _baseUrl = 'http://192.168.8.6:8080';
+  static const String _baseUrl = ApiConfig.apiBaseUrl;
 
   void setId(String id) {
     this.id = id;

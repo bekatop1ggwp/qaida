@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:qaida/core/api_config.dart';
 
 class AuthProvider extends ChangeNotifier {
   int _authPageIndex = 0;
@@ -64,7 +65,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future register(String email, String password) async {
     await http.post(
-      Uri.parse('http://192.168.8.6:8080/api/auth'),
+      Uri.parse('${ApiConfig.apiBaseUrl}/api/auth'),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },

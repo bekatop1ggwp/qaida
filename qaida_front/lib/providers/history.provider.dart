@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:qaida/core/api_config.dart';
 
 class HistoryProvider extends ChangeNotifier {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const String _baseUrl = 'http://192.168.8.6:8080';
+  static const String _baseUrl = ApiConfig.apiBaseUrl;
 
   final Map<String, Map<String, dynamic>> _placesCache = {};
   List<Map<String, dynamic>> history = [];

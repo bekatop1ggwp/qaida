@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/providers/user.provider.dart';
+import 'package:qaida/core/api_config.dart';
 
 class SettingsIcon extends StatelessWidget {
   const SettingsIcon({super.key});
@@ -33,7 +34,7 @@ class SettingsIcon extends StatelessWidget {
           image: user.imageId != null
               ? DecorationImage(
                   image: NetworkImage(
-                    'http://192.168.8.6:8080/api/image/${user.imageId}',
+                    ApiConfig.imageById(user.imageId.toString()),
                   ),
                   fit: BoxFit.cover,
                 )

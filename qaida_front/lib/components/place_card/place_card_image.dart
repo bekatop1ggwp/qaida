@@ -1,36 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:qaida/core/api_config.dart';
 
 class PlaceCardImage extends StatelessWidget {
   final Map? place;
-
-  static const String _baseUrl = 'http://192.168.8.6:8080';
 
   const PlaceCardImage({
     super.key,
     this.place,
   });
 
-  String? _resolveImageUrl(dynamic value) {
-    final raw = value?.toString().trim();
-
-    if (raw == null || raw.isEmpty || raw == 'null') {
-      return null;
-    }
-
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      return raw;
-    }
-
-    if (raw.startsWith('/')) {
-      return '$_baseUrl$raw';
-    }
-
-    return '$_baseUrl/$raw';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final imageUrl = _resolveImageUrl(place?['image']);
+    final imageUrl = ApiConfig.resolveFileUrl(place?['image']);
 
     if (imageUrl == null) {
       return const _ImagePlaceholder();

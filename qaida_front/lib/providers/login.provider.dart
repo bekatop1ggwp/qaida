@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:qaida/core/api_config.dart';
 
 class LoginProvider extends ChangeNotifier {
   TextEditingController emailController = TextEditingController();
@@ -10,7 +11,7 @@ class LoginProvider extends ChangeNotifier {
   Future login(String email, String password) async {
     try {
       http.Response response = await http.post(
-        Uri.parse('http://192.168.8.6:8080/api/auth/login'),
+        Uri.parse('${ApiConfig.apiBaseUrl}/api/auth/login'),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },

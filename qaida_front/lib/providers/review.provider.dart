@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:qaida/core/api_config.dart';
 
 class ReviewProvider extends ChangeNotifier {
-  static const String _baseUrl = 'http://192.168.8.6:8080';
+  static const String _baseUrl = ApiConfig.apiBaseUrl;
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
