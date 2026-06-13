@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/components/place_card/place_card_image.dart';
-import 'package:qaida/components/q_text.dart';
 import 'package:qaida/providers/history.provider.dart';
 import 'package:qaida/providers/place.provider.dart';
 import 'package:qaida/views/place/place.dart';

@@ -13,20 +13,20 @@ class PlaceCardSkeleton extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
-        child: Column(
+        child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
+            Expanded(
               child: SizedBox(
                 width: double.infinity,
                 child: SkeletonBox(height: double.infinity, radius: 0),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              padding: EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   SkeletonBox(height: 14, width: 120),
                   SizedBox(height: 6),
                   SkeletonBox(height: 10, width: 90),

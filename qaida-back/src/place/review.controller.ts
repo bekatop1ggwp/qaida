@@ -79,8 +79,8 @@ export class ReviewController {
   async deleteReview(
     @Param('review_id') review_id: ObjectId,
     @Req() req: Request,
-  ) {
-    return await this.placeReview.handleReview(req['method'], null, review_id);
+  ): Promise<{ deleted: boolean }> {
+    return await this.placeReview.deleteMyReview(review_id, req['user']._id);
   }
 
   @ApiResponse({ type: VoteDTO })

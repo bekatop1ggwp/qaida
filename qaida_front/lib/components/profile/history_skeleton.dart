@@ -14,16 +14,16 @@ class HistorySkeleton extends StatelessWidget {
         color: const Color(0xFFFAFAFA),
         borderRadius: BorderRadius.circular(24),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(left: 6, bottom: 12),
             child: ProfileSkeletonBox(width: 120, height: 20, radius: 8),
           ),
           Expanded(
             child: Row(
-              children: const [
+              children: [
                 Expanded(
                   child: ProfileSkeletonBox(height: double.infinity, radius: 18),
                 ),

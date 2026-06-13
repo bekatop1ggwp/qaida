@@ -34,7 +34,6 @@ class _AuthorizedHomeState extends State<AuthorizedHome> {
     final places = recommendationProvider.places;
 
     if (!userProvider.hasMyself ||
-        userProvider.myself.id == null ||
         userProvider.myself.id.toString().isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }

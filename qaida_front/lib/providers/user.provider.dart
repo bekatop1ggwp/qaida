@@ -9,7 +9,7 @@ import 'package:qaida/data/user.data.dart';
 import 'package:qaida/core/api_config.dart';
 
 class UserProvider extends ChangeNotifier {
-  static final FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _baseUrl = ApiConfig.apiBaseUrl;
 
   static const String _cachedUserKey = 'cached_user';

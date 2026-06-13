@@ -27,8 +27,8 @@ class _InterestHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

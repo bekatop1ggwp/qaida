@@ -66,7 +66,7 @@ class _MyAppState extends State<MyApp> {
         final userPro = context.read<UserProvider>();
         if (!userPro.hasMyself) return;
 
-        final user = userPro.myself!;
+        final user = userPro.myself;
         final geoProv = context.read<GeolocationProvider>();
 
         final location = await geoProv.getLocationSafe();

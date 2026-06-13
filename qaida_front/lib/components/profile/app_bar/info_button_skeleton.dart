@@ -13,10 +13,10 @@ class InfoButtonSkeleton extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       constraints: const BoxConstraints(minHeight: 72),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           ProfileSkeletonBox(width: 18, height: 18, radius: 6),
           SizedBox(height: 8),
           ProfileSkeletonBox(width: 66, height: 12, radius: 6),

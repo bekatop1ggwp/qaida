@@ -34,21 +34,21 @@ class _PlaceHeaderSkeleton extends StatelessWidget {
           bottomRight: Radius.circular(20),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+      child: const Padding(
+        padding: EdgeInsets.only(bottom: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SkeletonBox(
+            SkeletonBox(
               width: double.infinity,
               height: 300,
               radius: 0,
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   SkeletonBox(width: double.infinity, height: 1, radius: 0),
                   SizedBox(height: 12),
                   SkeletonBox(width: 180, height: 16),

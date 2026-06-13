@@ -220,7 +220,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```powershell
 cd C:\Qaida\qaida_front
 flutter pub get
-flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
+  flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
 ```
 
 ### Terminal 3 — Flutter on physical Android device
@@ -237,7 +237,7 @@ flutter run --dart-define=API_BASE_URL=http://YOUR_LOCAL_NETWORK_IP:8080 --dart-
 
 ```powershell
 cd C:\Qaida\qaida_front
-flutter build apk --debug
+flutter build apk --debug -dart-define=API_BASE_URL=http://YOUR_LOCAL_NETWORK_IP:8080 --dart-define=RECOMMENDATION_API_URL=http://YOUR_LOCAL_NETWORK_IP:8001
 ```
 
 APK path:

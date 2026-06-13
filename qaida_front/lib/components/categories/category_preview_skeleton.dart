@@ -9,11 +9,11 @@ class CategoryPreviewSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(10.0),
+        const Padding(
+          padding: EdgeInsets.all(10.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               SkeletonBox(height: 16, width: 120),
               SkeletonBox(height: 32, width: 56, radius: 18),
             ],

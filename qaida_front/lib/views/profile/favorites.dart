@@ -42,8 +42,8 @@ class Favorites extends StatelessWidget {
         onRefresh: () => _refreshFavorites(context),
         child: favorites.isEmpty
             ? ListView(
-                physics: AlwaysScrollableScrollPhysics(),
-                children: [
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
                   SizedBox(height: 180),
                   Icon(
                     Icons.favorite_border_rounded,

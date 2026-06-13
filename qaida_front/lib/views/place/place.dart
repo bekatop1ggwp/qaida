@@ -57,7 +57,7 @@ class _PlaceState extends State<Place> {
           }
 
           return ListView(
-            children: [
+            children: const [
               PlaceHeader(),
               PlaceReviews(),
               MightBeInteresting(),
