@@ -48,6 +48,32 @@ class _CategoryPlacesState extends State<CategoryPlaces> {
     });
   }
 
+  String _placeUniqueKey(dynamic place) {
+    final title = place['title']?.toString().trim().toLowerCase() ?? '';
+    final address = place['address']?.toString().trim().toLowerCase() ?? '';
+
+    return '$title|$address';
+  }
+
+  void _addUniquePlaces(List newPlaces, {bool replace = false}) {
+    if (replace) {
+      _places.clear();
+    }
+
+    final existingKeys = _places.map(_placeUniqueKey).toSet();
+
+    for (final place in newPlaces) {
+      final key = _placeUniqueKey(place);
+
+      if (key.trim() == '|' || existingKeys.contains(key)) {
+        continue;
+      }
+
+      _places.add(place);
+      existingKeys.add(key);
+    }
+  }
+
   Future<void> _loadFirstPage() async {
     setState(() {
       _isLoading = _places.isEmpty;
@@ -63,9 +89,10 @@ class _CategoryPlacesState extends State<CategoryPlaces> {
       setState(() {
         _page = result['page'] ?? 1;
         _totalPages = result['totalPages'] ?? 1;
-        _places
-          ..clear()
-          ..addAll(List.from(result['places'] ?? []));
+        _addUniquePlaces(
+          List.from(result['places'] ?? []),
+          replace: true,
+        );
       });
     } catch (e) {
       debugPrint('CategoryPlaces first page error: $e');
@@ -97,7 +124,9 @@ class _CategoryPlacesState extends State<CategoryPlaces> {
       setState(() {
         _page = result['page'] ?? nextPage;
         _totalPages = result['totalPages'] ?? _totalPages;
-        _places.addAll(List.from(result['places'] ?? []));
+        _addUniquePlaces(
+          List.from(result['places'] ?? []),
+        );
       });
     } catch (e) {
       debugPrint('CategoryPlaces load more error: $e');
