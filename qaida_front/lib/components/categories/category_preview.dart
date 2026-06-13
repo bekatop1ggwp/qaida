@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:qaida/components/all_button.dart';
 import 'package:qaida/components/place_card/place_card.dart';
 import 'package:qaida/views/categories/category_places.dart';
 
@@ -24,18 +23,21 @@ class CategoryPreview extends StatelessWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(10.0),
+          padding: const EdgeInsets.fromLTRB(8, 18, 8, 12),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                categoryName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15.0,
+              Expanded(
+                child: Text(
+                  categoryName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
                 ),
               ),
-              AllButton(
+              TextButton(
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -47,6 +49,39 @@ class CategoryPreview extends StatelessWidget {
                     ),
                   );
                 },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF6F4BB2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  minimumSize: const Size(0, 34),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: const BorderSide(
+                      color: Color(0xFF6F4BB2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Все',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
