@@ -8,7 +8,11 @@ class RecommendationProvider extends ChangeNotifier {
   bool isLoading = false;
   bool hasLoadedOnce = false;
 
+  int _requestId = 0;
+
   Future<void> getRecommendedPlaces(String userId) async {
+    final currentRequestId = ++_requestId;
+
     isLoading = true;
     notifyListeners();
 
@@ -19,46 +23,39 @@ class RecommendationProvider extends ChangeNotifier {
         body: json.encode({'user_id': userId}),
       );
 
+      if (currentRequestId != _requestId) return;
+
       if (kDebugMode) {
-        print('[REC] status: ${response.statusCode}');
-        print('[REC] body: ${response.body}');
+        print('[REC PERSONALIZED] status: ${response.statusCode}');
+        print('[REC PERSONALIZED] body: ${response.body}');
       }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
-        if (decoded is List) {
-          places = List.from(decoded);
-        } else {
-          places = [];
-        }
+        places = decoded is List ? List.from(decoded) : [];
       } else {
         places = [];
-        if (kDebugMode) {
-          print('Recommendation request failed: ${response.statusCode}');
-          print(response.body);
-        }
       }
     } catch (e, st) {
+      if (currentRequestId != _requestId) return;
+
       places = [];
       if (kDebugMode) {
-        print('RecommendationProvider error: $e');
+        print('RecommendationProvider personalized error: $e');
         print(st);
       }
     } finally {
-      isLoading = false;
-      hasLoadedOnce = true;
-      notifyListeners();
-    }
-  }
-
-  void clearRecommendations({bool notify = true}) {
-    places.clear();
-    if (notify) {
-      notifyListeners();
+      if (currentRequestId == _requestId) {
+        isLoading = false;
+        hasLoadedOnce = true;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> getPopularPlaces() async {
+    final currentRequestId = ++_requestId;
+
     isLoading = true;
     notifyListeners();
 
@@ -67,17 +64,42 @@ class RecommendationProvider extends ChangeNotifier {
         Uri.parse('${RecommendationApi.recommendationBaseUrl}/popular'),
       );
 
+      if (currentRequestId != _requestId) return;
+
+      if (kDebugMode) {
+        print('[REC POPULAR] status: ${response.statusCode}');
+        print('[REC POPULAR] body: ${response.body}');
+      }
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         places = decoded is List ? List.from(decoded) : [];
       } else {
         places = [];
       }
-    } catch (_) {
+    } catch (e, st) {
+      if (currentRequestId != _requestId) return;
+
       places = [];
+      if (kDebugMode) {
+        print('RecommendationProvider popular error: $e');
+        print(st);
+      }
     } finally {
-      isLoading = false;
-      hasLoadedOnce = true;
+      if (currentRequestId == _requestId) {
+        isLoading = false;
+        hasLoadedOnce = true;
+        notifyListeners();
+      }
+    }
+  }
+
+  void clearRecommendations({bool notify = true}) {
+    _requestId++;
+    places.clear();
+    isLoading = false;
+
+    if (notify) {
       notifyListeners();
     }
   }

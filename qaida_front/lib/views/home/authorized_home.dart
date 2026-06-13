@@ -22,9 +22,13 @@ class _AuthorizedHomeState extends State<AuthorizedHome> {
     final userProvider = context.read<UserProvider>();
     if (!userProvider.hasMyself) return;
 
-    _recommendationsFuture ??= context
-        .read<RecommendationProvider>()
-        .getRecommendedPlaces(userProvider.myself.id);
+    if (_recommendationsFuture == null) {
+      final recommendationProvider = context.read<RecommendationProvider>();
+      recommendationProvider.clearRecommendations(notify: false);
+
+      _recommendationsFuture =
+          recommendationProvider.getRecommendedPlaces(userProvider.myself.id);
+    }
   }
 
   @override

@@ -268,6 +268,15 @@ def get_candidate_places_from_similar_users(similar_users, user_visited_places):
 def _percent(value):
     return int(round(max(0.0, min(float(value), 1.0)) * 100))
 
+def cosine_sim(a, b):
+    a = np.array(a, dtype=float)
+    b = np.array(b, dtype=float)
+
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom == 0:
+        return 0.0
+
+    return float(np.dot(a, b) / denom)
 
 def rank_places(user_vector, candidate_scores):
     ranked = []
