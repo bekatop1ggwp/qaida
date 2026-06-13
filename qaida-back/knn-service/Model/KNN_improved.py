@@ -323,9 +323,13 @@ def generateRecommendation(user_id):
         user_name, user_interests, user_minor_categories, user_visited_places = get_user_data_by_id(user_id)
         log(f"user loaded name={user_name} interests={len(user_interests)} visited={len(user_visited_places)}")
 
-        if not user_name or not user_interests:
-            log("user has no name or interests, returning []")
-            return []
+        if not user_name:
+            log("user not found, returning popular fallback")
+            return get_popular_places(limit=10)
+
+        if not user_interests:
+            log("user has no interests, returning popular fallback")
+            return get_popular_places(limit=10, exclude_place_ids=user_visited_places)
 
         user_vector = build_user_vector(user_minor_categories)
         log(f"user vector built len={len(user_vector)}")
@@ -333,11 +337,23 @@ def generateRecommendation(user_id):
         similar_users = get_similar_users(user_interests, user_id)
         log(f"similar users found: {len(similar_users)}")
 
+        if not similar_users:
+            log("no similar users, returning popular fallback")
+            return get_popular_places(limit=10, exclude_place_ids=user_visited_places)
+
         candidate_scores = get_candidate_places_from_similar_users(similar_users, user_visited_places)
         log(f"candidate places found: {len(candidate_scores)}")
 
+        if not candidate_scores:
+            log("no candidate places, returning popular fallback")
+            return get_popular_places(limit=10, exclude_place_ids=user_visited_places)
+
         ranked = rank_places(user_vector, candidate_scores)
         log(f"ranked places: {len(ranked)}")
+
+        if not ranked:
+            log("no ranked places, returning popular fallback")
+            return get_popular_places(limit=10, exclude_place_ids=user_visited_places)
 
         top_ids = [place_id for place_id, _ in ranked[:10]]
         result = getPlacesByIds(top_ids)
@@ -350,8 +366,7 @@ def generateRecommendation(user_id):
         elapsed = time.time() - started
         log(f"generateRecommendation ERROR in {elapsed:.3f}s error={e}")
         traceback.print_exc()
-        return []
-
+        return get_popular_places(limit=10)
 
 try:
     warmup_cache()
