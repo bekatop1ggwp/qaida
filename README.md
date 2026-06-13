@@ -221,6 +221,17 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 cd C:\Qaida\qaida_front
 flutter clean
 flutter pub get
+& "C:\android_studio\platform-tools\adb.exe" logcat -c; flutter run -d emulator-5554 --no-enable-impeller --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
+```
+
+```powershell
+& "C:\android_studio\platform-tools\adb.exe" kill-server
+& "C:\android_studio\platform-tools\adb.exe" start-server
+& "C:\android_studio\platform-tools\adb.exe" devices
+& "C:\android_studio\platform-tools\adb.exe" logcat -c
+
+cd C:\Qaida\qaida_front
+
 flutter run -d emulator-5554 --no-enable-impeller --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
 ```
 

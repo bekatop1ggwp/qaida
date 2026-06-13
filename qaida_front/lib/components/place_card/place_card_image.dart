@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:qaida/core/api_config.dart';
 
@@ -17,18 +18,14 @@ class PlaceCardImage extends StatelessWidget {
       return const _ImagePlaceholder();
     }
 
-    return Image.network(
-      imageUrl,
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
       width: double.infinity,
       height: double.infinity,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const _ImagePlaceholder();
-      },
-      errorBuilder: (_, __, ___) {
-        return const _ImagePlaceholder();
-      },
+      fadeInDuration: const Duration(milliseconds: 150),
+      placeholder: (_, __) => const _ImagePlaceholder(),
+      errorWidget: (_, __, ___) => const _ImagePlaceholder(),
     );
   }
 }

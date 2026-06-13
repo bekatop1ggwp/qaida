@@ -1,7 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qaida/providers/place.provider.dart';
 import 'package:qaida/core/api_config.dart';
+import 'package:qaida/providers/place.provider.dart';
 
 class PlaceImage extends StatelessWidget {
   const PlaceImage({super.key});
@@ -16,21 +17,16 @@ class PlaceImage extends StatelessWidget {
       height: 300,
       child: imageUrl == null
           ? const _PlaceImagePlaceholder()
-          : Image.network(
-              imageUrl,
+          : CachedNetworkImage(
+              imageUrl: imageUrl,
               width: double.infinity,
               height: double.infinity,
               fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-
-                return const _PlaceImagePlaceholder(
-                  isLoading: true,
-                );
-              },
-              errorBuilder: (_, __, ___) {
-                return const _PlaceImagePlaceholder();
-              },
+              fadeInDuration: const Duration(milliseconds: 150),
+              placeholder: (_, __) => const _PlaceImagePlaceholder(
+                isLoading: true,
+              ),
+              errorWidget: (_, __, ___) => const _PlaceImagePlaceholder(),
             ),
     );
   }
