@@ -5,7 +5,7 @@ import traceback
 import time
 from threading import Lock
 
-from Model.KNN_improved import generateRecommendation
+from Model.KNN_improved import generateRecommendation, get_popular_places
 
 app = FastAPI()
 
@@ -62,6 +62,9 @@ def cleanup_expired_cache():
 def health():
     return {"ok": True}
 
+@app.get("/popular")
+def popular():
+    return get_popular_places(limit=10)
 
 @app.post("/recommend")
 def recommend(payload: UserId):

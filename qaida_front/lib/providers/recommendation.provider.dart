@@ -57,4 +57,28 @@ class RecommendationProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> getPopularPlaces() async {
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('${RecommendationApi.recommendationBaseUrl}/popular'),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        places = decoded is List ? List.from(decoded) : [];
+      } else {
+        places = [];
+      }
+    } catch (_) {
+      places = [];
+    } finally {
+      isLoading = false;
+      hasLoadedOnce = true;
+      notifyListeners();
+    }
+  }
 }
