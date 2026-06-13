@@ -19,42 +19,6 @@ RECOMMENDATION_CACHE = {}
 CACHE_TTL_SECONDS = 60
 CACHE_LOCK = Lock()
 
-def get_popular_places(limit=10, exclude_place_ids=None):
-    exclude_place_ids = set(exclude_place_ids or [])
-
-    rows = list(db["visiteds"].aggregate([
-        {"$match": {"status": "VISITED"}},
-        {"$group": {"_id": "$place_id", "visits_count": {"$sum": 1}}},
-        {"$sort": {"visits_count": -1}},
-        {"$limit": limit * 3}
-    ]))
-
-    popular_ids = []
-    for row in rows:
-        place_id = _to_str(row["_id"])
-        if place_id not in exclude_place_ids:
-            popular_ids.append(place_id)
-
-        if len(popular_ids) >= limit:
-            break
-
-    # если посещений мало или их нет — добиваем по рейтингу 2GIS
-    if len(popular_ids) < limit:
-        fallback_ids = sorted(
-            PLACE_VECTOR_CACHE.keys(),
-            key=lambda pid: PLACE_VECTOR_CACHE[pid].get("score", 0),
-            reverse=True
-        )
-
-        for place_id in fallback_ids:
-            if place_id not in exclude_place_ids and place_id not in popular_ids:
-                popular_ids.append(place_id)
-
-            if len(popular_ids) >= limit:
-                break
-
-    return getPlacesByIds(popular_ids[:limit])
-
 def get_cached_recommendations(user_id: str):
     now = time.time()
 
