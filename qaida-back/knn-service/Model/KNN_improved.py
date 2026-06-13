@@ -245,6 +245,7 @@ def get_candidate_places_from_similar_users(similar_users, user_visited_places):
     ))
 
     scores = Counter()
+    similar_user_counts = Counter()
 
     for row in rows:
         place_id = _to_str(row["place_id"])
@@ -253,44 +254,64 @@ def get_candidate_places_from_similar_users(similar_users, user_visited_places):
 
         sim_user_id = _to_str(row["user_id"])
         scores[place_id] += similarity_map.get(sim_user_id, 0.0)
+        similar_user_counts[place_id] += 1
 
-    return dict(scores)
+    return {
+        place_id: {
+            "collaborative_score": float(score),
+            "similar_users_count": int(similar_user_counts.get(place_id, 0)),
+        }
+        for place_id, score in scores.items()
+    }
 
 
-def cosine_sim(a, b):
-    a = np.array(a, dtype=float)
-    b = np.array(b, dtype=float)
-
-    denom = np.linalg.norm(a) * np.linalg.norm(b)
-    if denom == 0:
-        return 0.0
-
-    return float(np.dot(a, b) / denom)
+def _percent(value):
+    return int(round(max(0.0, min(float(value), 1.0)) * 100))
 
 
 def rank_places(user_vector, candidate_scores):
     ranked = []
 
-    for place_id, collaborative_score in candidate_scores.items():
+    for place_id, candidate_data in candidate_scores.items():
         place_data = PLACE_VECTOR_CACHE.get(place_id)
         if not place_data:
             continue
 
+        collaborative_score = float(candidate_data.get("collaborative_score", 0.0))
+        similar_users_count = int(candidate_data.get("similar_users_count", 0))
+
         content_score = cosine_sim(user_vector, place_data["vector"])
-        rating_bonus = min(place_data["score"] / 5.0, 1.0) * 0.1
+        rating_value = place_data["score"]
+        rating_bonus = min(rating_value / 5.0, 1.0) * 0.1
         final_score = (0.7 * collaborative_score) + (0.3 * content_score) + rating_bonus
 
-        ranked.append((place_id, final_score))
+        reason = {
+            "type": "personalized",
+            "accuracy": _percent(final_score),
+            "contentMatch": _percent(content_score),
+            "behaviorSignal": _percent(collaborative_score),
+            "similarUsersCount": similar_users_count,
+            "rating": round(rating_value, 1),
+            "text": "Место рекомендовано на основе ваших интересов, рейтинга и истории посещений похожих пользователей.",
+        }
 
-    ranked.sort(key=lambda x: x[1], reverse=True)
+        ranked.append({
+            "place_id": place_id,
+            "final_score": final_score,
+            "reason": reason,
+        })
+
+    ranked.sort(key=lambda x: x["final_score"], reverse=True)
     return ranked
 
 
-def getPlacesByIds(ids):
+def getPlacesByIds(ids, recommendation_reasons=None):
     places = []
+    recommendation_reasons = recommendation_reasons or {}
 
     for place_id in ids:
-        place = PLACE_CACHE.get(_to_str(place_id))
+        place_id_str = _to_str(place_id)
+        place = PLACE_CACHE.get(place_id_str)
         if not place:
             continue
 
@@ -306,7 +327,10 @@ def getPlacesByIds(ids):
         prepared["category_id"] = [_to_str(x) for x in prepared.get("category_id", [])]
         prepared["score_2gis"] = str(prepared.get("score_2gis", "0"))
 
-        # global_category фронту не нужен
+        reason = recommendation_reasons.get(place_id_str)
+        if reason:
+            prepared["recommendation_reason"] = reason
+
         prepared.pop("global_category", None)
         prepared.pop("matching_categories", None)
 
@@ -314,7 +338,8 @@ def getPlacesByIds(ids):
 
     return places
 
-def get_popular_places(limit=10, exclude_place_ids=None):
+
+def get_popular_places(limit=10, exclude_place_ids=None, reason_type="popular"):
     exclude_place_ids = set(exclude_place_ids or [])
 
     rows = list(db["visiteds"].aggregate([
@@ -325,8 +350,11 @@ def get_popular_places(limit=10, exclude_place_ids=None):
     ]))
 
     popular_ids = []
+    visit_count_map = {}
+
     for row in rows:
         place_id = _to_str(row["_id"])
+        visit_count_map[place_id] = int(row.get("visits_count", 0))
 
         if place_id not in exclude_place_ids:
             popular_ids.append(place_id)
@@ -348,7 +376,24 @@ def get_popular_places(limit=10, exclude_place_ids=None):
             if len(popular_ids) >= limit:
                 break
 
-    return getPlacesByIds(popular_ids[:limit])
+    reasons = {}
+    for place_id in popular_ids[:limit]:
+        place_data = PLACE_VECTOR_CACHE.get(place_id, {})
+        rating_value = round(float(place_data.get("score", 0.0)), 1)
+        visits_count = visit_count_map.get(place_id, 0)
+
+        reasons[place_id] = {
+            "type": reason_type,
+            "accuracy": None,
+            "contentMatch": None,
+            "behaviorSignal": None,
+            "similarUsersCount": 0,
+            "rating": rating_value,
+            "visitsCount": visits_count,
+            "text": "Это одно из популярных мест среди пользователей приложения.",
+        }
+
+    return getPlacesByIds(popular_ids[:limit], reasons)
 
 def generateRecommendation(user_id):
     started = time.time()
@@ -390,8 +435,13 @@ def generateRecommendation(user_id):
             log("no ranked places, returning popular fallback")
             return get_popular_places(limit=10, exclude_place_ids=user_visited_places)
 
-        top_ids = [place_id for place_id, _ in ranked[:10]]
-        result = getPlacesByIds(top_ids)
+        top_items = ranked[:10]
+        top_ids = [item["place_id"] for item in top_items]
+        recommendation_reasons = {
+            item["place_id"]: item["reason"]
+            for item in top_items
+        }
+        result = getPlacesByIds(top_ids, recommendation_reasons)
 
         elapsed = time.time() - started
         log(f"generateRecommendation finished in {elapsed:.3f}s result_count={len(result)}")
