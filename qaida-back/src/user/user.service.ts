@@ -85,24 +85,51 @@ export class UserService {
   }
 
   public async addFriend(id: ObjectId, friend_id: ObjectId) {
-    const currentUser = await this.updateUserInDB(
+    if (id.toString() === friend_id.toString()) {
+      throw new MethodNotAllowedException('Нельзя добавить самого себя');
+    }
+
+    const friendExists = await this.user.exists({ _id: friend_id });
+
+    if (!friendExists) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    const currentUser = await this.user.findById(id).select('friends');
+
+    if (!currentUser) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    const alreadyFriend = (currentUser.friends ?? []).some(
+      (friend) => friend.toString() === friend_id.toString(),
+    );
+
+    if (alreadyFriend) {
+      throw new MethodNotAllowedException('Пользователь уже в друзьях');
+    }
+
+    await this.user.updateOne(
+      { _id: id },
       {
-        $push: {
+        $addToSet: {
           friends: friend_id,
         },
       },
-      id,
     );
-    const friend = await this.updateUserInDB(
+
+    await this.user.updateOne(
+      { _id: friend_id },
       {
-        $push: {
+        $addToSet: {
           friends: id,
         },
       },
-      friend_id,
     );
 
-    return { currentUser, friend };
+    return {
+      success: true,
+    };
   }
 
   public async removeFriend(id: ObjectId, friend_id: ObjectId) {
@@ -199,5 +226,76 @@ export class UserService {
         },
       ]);
     return userData;
+  }
+
+  public async getFriends(id: ObjectId) {
+    const currentUser = await this.user
+      .findById(id)
+      .select('friends')
+      .populate({
+        path: 'friends',
+        select: '_id name surname email image_id interests',
+        populate: {
+          path: 'interests',
+          select: '_id name',
+        },
+      });
+
+    if (!currentUser) throw new NotFoundException('Пользователь не найден');
+
+    return currentUser.friends ?? [];
+  }
+
+  public async getFriendSuggestions(id: ObjectId) {
+    const currentUser = await this.user.findById(id).select('interests friends');
+
+    if (!currentUser) throw new NotFoundException('Пользователь не найден');
+
+    const currentInterestIds = (currentUser.interests ?? []).map((interest) =>
+      interest.toString(),
+    );
+
+    if (!currentInterestIds.length) return [];
+
+    const friendIds = (currentUser.friends ?? []).map((friend) =>
+      friend.toString(),
+    );
+
+    const excludedIds = [id.toString(), ...friendIds];
+
+    const users = await this.user
+      .find({
+        _id: { $nin: excludedIds },
+        interests: { $in: currentInterestIds },
+        isDiactivated: { $ne: true },
+      })
+      .select('_id name surname email image_id interests')
+      .populate({
+        path: 'interests',
+        select: '_id name',
+      });
+
+    return users
+      .map((user) => {
+        const userInterestIds = (user.interests ?? []).map((interest: any) =>
+          interest._id ? interest._id.toString() : interest.toString(),
+        );
+
+        const matchingInterestsCount = userInterestIds.filter((interestId) =>
+          currentInterestIds.includes(interestId),
+        ).length;
+
+        return {
+          _id: user._id,
+          name: user.name,
+          surname: user.surname,
+          email: user.email,
+          image_id: user.image_id,
+          interests: user.interests,
+          matchingInterestsCount,
+        };
+      })
+      .filter((user) => user.matchingInterestsCount > 0)
+      .sort((a, b) => b.matchingInterestsCount - a.matchingInterestsCount);
   }
 }

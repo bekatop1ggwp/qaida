@@ -33,6 +33,12 @@ class UserProvider extends ChangeNotifier {
   bool _cacheHydrated = false;
   bool get cacheHydrated => _cacheHydrated;
 
+  List friends = [];
+  List friendSuggestions = [];
+
+  bool isLoadingFriends = false;
+  bool isLoadingFriendSuggestions = false;
+
   String _safeString(dynamic value) {
     if (value == null) return '';
     return value.toString();
@@ -484,6 +490,87 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) print(e);
+      rethrow;
+    }
+  }
+
+  Future<void> fetchFriends() async {
+    try {
+      isLoadingFriends = true;
+      notifyListeners();
+
+      final token = await _storage.read(key: 'access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/user/friends'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Failed to load friends: ${response.statusCode}');
+      }
+
+      friends = List.from(jsonDecode(response.body));
+    } catch (e) {
+      if (kDebugMode) print('fetchFriends error: $e');
+      rethrow;
+    } finally {
+      isLoadingFriends = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchFriendSuggestions() async {
+    try {
+      isLoadingFriendSuggestions = true;
+      notifyListeners();
+
+      final token = await _storage.read(key: 'access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/user/friends/suggestions'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Failed to load friend suggestions: ${response.statusCode}');
+      }
+
+      friendSuggestions = List.from(jsonDecode(response.body));
+    } catch (e) {
+      if (kDebugMode) print('fetchFriendSuggestions error: $e');
+      rethrow;
+    } finally {
+      isLoadingFriendSuggestions = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addFriend(String friendId) async {
+    try {
+      final token = await _storage.read(key: 'access_token');
+
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/user/friends/$friendId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Failed to add friend: ${response.statusCode}');
+      }
+
+      await Future.wait([
+        fetchFriends(),
+        fetchFriendSuggestions(),
+      ]);
+    } catch (e) {
+      if (kDebugMode) print('addFriend error: $e');
       rethrow;
     }
   }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:qaida/providers/user.provider.dart';
 
 class Contacts extends StatefulWidget {
   const Contacts({super.key});
@@ -10,57 +12,16 @@ class Contacts extends StatefulWidget {
 class _ContactsState extends State<Contacts> {
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _friends = const [
-    {
-      'name': 'Бектас Туржанов',
-      'subtitle': 'В сети',
-      'icon': Icons.person_rounded,
-      'accent': Color(0xFF6C63FF),
-      'online': true,
-    },
-    {
-      'name': 'Еркебулан Ахмедия',
-      'subtitle': '3 общих интереса',
-      'icon': Icons.person_rounded,
-      'accent': Color(0xFF4ECDC4),
-      'online': false,
-    },
-    {
-      'name': 'Алдияр Сейлханов',
-      'subtitle': 'Недавно был в сети',
-      'icon': Icons.person_rounded,
-      'accent': Color(0xFFFF8A65),
-      'online': false,
-    },
-    {
-      'name': 'Айгерим С.',
-      'subtitle': 'В сети',
-      'icon': Icons.person_rounded,
-      'accent': Color(0xFF5C6BC0),
-      'online': true,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
 
-  final List<Map<String, dynamic>> _groups = const [
-    {
-      'name': 'Любители кофе',
-      'subtitle': '12 участников',
-      'icon': Icons.groups_rounded,
-      'accent': Color(0xFFFFB74D),
-    },
-    {
-      'name': 'Куда сходить в Астане',
-      'subtitle': '28 участников',
-      'icon': Icons.travel_explore_rounded,
-      'accent': Color(0xFF64B5F6),
-    },
-    {
-      'name': 'Гастро места',
-      'subtitle': '9 участников',
-      'icon': Icons.restaurant_menu_rounded,
-      'accent': Color(0xFF81C784),
-    },
-  ];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
+      userProvider.fetchFriends();
+      userProvider.fetchFriendSuggestions();
+    });
+  }
 
   @override
   void dispose() {
@@ -68,21 +29,54 @@ class _ContactsState extends State<Contacts> {
     super.dispose();
   }
 
-  List<Map<String, dynamic>> _filterItems(List<Map<String, dynamic>> items) {
+  List _filterItems(List items) {
     final query = _searchController.text.trim().toLowerCase();
     if (query.isEmpty) return items;
 
     return items.where((item) {
-      final name = (item['name'] ?? '').toString().toLowerCase();
-      final subtitle = (item['subtitle'] ?? '').toString().toLowerCase();
-      return name.contains(query) || subtitle.contains(query);
+      final name = '${item['name'] ?? ''} ${item['surname'] ?? ''}'.toLowerCase();
+      final email = (item['email'] ?? '').toString().toLowerCase();
+
+      return name.contains(query) || email.contains(query);
     }).toList();
+  }
+
+  String _getFullName(dynamic user) {
+    final name = (user['name'] ?? '').toString();
+    final surname = (user['surname'] ?? '').toString();
+    final fullName = '$name $surname'.trim();
+
+    return fullName.isEmpty ? 'Пользователь' : fullName;
+  }
+
+  Future<void> _addFriend(String friendId) async {
+    try {
+      await context.read<UserProvider>().addFriend(friendId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Пользователь добавлен в друзья'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось добавить пользователя'),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final friends = _filterItems(_friends);
-    final groups = _filterItems(_groups);
+    final userProvider = context.watch<UserProvider>();
+
+    final friends = _filterItems(userProvider.friends);
+    final suggestions = _filterItems(userProvider.friendSuggestions);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
@@ -99,63 +93,82 @@ class _ContactsState extends State<Contacts> {
         ),
         centerTitle: false,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          _SearchField(controller: _searchController, onChanged: (_) => setState(() {})),
-          const SizedBox(height: 18),
-          _SectionHeader(
-            title: 'Друзья',
-            count: friends.length,
-            onSeeAll: () {},
-          ),
-          const SizedBox(height: 10),
-          if (friends.isEmpty)
-            const _EmptyBlock(
-              icon: Icons.person_search_rounded,
-              text: 'По вашему запросу друзья не найдены',
-            )
-          else
-            ...friends.map((friend) => _ContactCard(
-                  title: friend['name'] as String,
-                  subtitle: friend['subtitle'] as String,
-                  icon: friend['icon'] as IconData,
-                  accent: friend['accent'] as Color,
-                  trailing: friend['online'] == true
-                      ? const _StatusChip(
-                          text: 'online',
-                          background: Color(0xFFE8F7EE),
-                          foreground: Color(0xFF2E7D32),
-                        )
-                      : const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Color(0xFF9AA3B2),
-                        ),
-                )),
-          const SizedBox(height: 20),
-          _SectionHeader(
-            title: 'Группы',
-            count: groups.length,
-            onSeeAll: () {},
-          ),
-          const SizedBox(height: 10),
-          if (groups.isEmpty)
-            const _EmptyBlock(
-              icon: Icons.group_off_rounded,
-              text: 'По вашему запросу группы не найдены',
-            )
-          else
-            ...groups.map((group) => _ContactCard(
-                  title: group['name'] as String,
-                  subtitle: group['subtitle'] as String,
-                  icon: group['icon'] as IconData,
-                  accent: group['accent'] as Color,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            context.read<UserProvider>().fetchFriends(),
+            context.read<UserProvider>().fetchFriendSuggestions(),
+          ]);
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            _SearchField(
+              controller: _searchController,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 18),
+
+            _SectionHeader(
+              title: 'Друзья',
+              count: friends.length,
+            ),
+            const SizedBox(height: 10),
+
+            if (userProvider.isLoadingFriends)
+              const _LoadingBlock()
+            else if (friends.isEmpty)
+              const _EmptyBlock(
+                icon: Icons.person_search_rounded,
+                text: 'Пока нет контактов. Добавляйте пользователей с похожими интересами.',
+              )
+            else
+              ...friends.map(
+                (user) => _ContactCard(
+                  title: _getFullName(user),
+                  subtitle: (user['email'] ?? '').toString(),
+                  icon: Icons.person_rounded,
+                  accent: const Color(0xFF6C63FF),
                   trailing: const Icon(
                     Icons.chevron_right_rounded,
                     color: Color(0xFF9AA3B2),
                   ),
-                )),
-        ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            _SectionHeader(
+              title: 'Возможно, вы знакомы',
+              count: suggestions.length,
+            ),
+            const SizedBox(height: 10),
+
+            if (userProvider.isLoadingFriendSuggestions)
+              const _LoadingBlock()
+            else if (suggestions.isEmpty)
+              const _EmptyBlock(
+                icon: Icons.person_add_alt_1_rounded,
+                text: 'Пока нет предложений. Добавляйте интересы, чтобы находить похожих пользователей.',
+              )
+            else
+              ...suggestions.map(
+                (user) => _ContactCard(
+                  title: _getFullName(user),
+                  subtitle: '${user['matchingInterestsCount'] ?? 0} общих интереса',
+                  icon: Icons.person_rounded,
+                  accent: const Color(0xFF4ECDC4),
+                  trailing: IconButton(
+                    onPressed: () => _addFriend(user['_id'].toString()),
+                    icon: const Icon(
+                      Icons.person_add_alt_1_rounded,
+                      color: Color(0xFF6C63FF),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -187,10 +200,17 @@ class _SearchField extends StatelessWidget {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
+        keyboardType: TextInputType.text,
+        textInputAction: TextInputAction.search,
+        enableSuggestions: true,
+        autocorrect: false,
         decoration: InputDecoration(
-          hintText: 'Поиск друзей и групп',
+          hintText: 'Поиск друзей',
           hintStyle: const TextStyle(color: Color(0xFF98A2B3)),
-          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF98A2B3)),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF98A2B3),
+          ),
           suffixIcon: controller.text.isEmpty
               ? null
               : IconButton(
@@ -204,7 +224,10 @@ class _SearchField extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -214,12 +237,10 @@ class _SearchField extends StatelessWidget {
 class _SectionHeader extends StatelessWidget {
   final String title;
   final int count;
-  final VoidCallback onSeeAll;
 
   const _SectionHeader({
     required this.title,
     required this.count,
-    required this.onSeeAll,
   });
 
   @override
@@ -247,18 +268,6 @@ class _SectionHeader extends StatelessWidget {
               color: Color(0xFF667085),
               fontWeight: FontWeight.w600,
             ),
-          ),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: onSeeAll,
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF6C63FF),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          ),
-          child: const Text(
-            'Все',
-            style: TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -354,32 +363,19 @@ class _ContactCard extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  final String text;
-  final Color background;
-  final Color foreground;
-
-  const _StatusChip({
-    required this.text,
-    required this.background,
-    required this.foreground,
-  });
+class _LoadingBlock extends StatelessWidget {
+  const _LoadingBlock();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 28),
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+      child: const Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }

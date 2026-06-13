@@ -47,6 +47,16 @@ export class UserController {
     return await this.userService.getme(req['user'].id);
   }
 
+  @Get('/friends')
+  async getFriends(@Req() req: Request) {
+    return await this.userService.getFriends(req['user'].id);
+  }
+
+  @Get('/friends/suggestions')
+  async getFriendSuggestions(@Req() req: Request) {
+    return await this.userService.getFriendSuggestions(req['user'].id);
+  }
+
   @Get('/get-user-data')
   async getUserData() {
     return await this.userService.getUserDataForModel();
@@ -167,7 +177,7 @@ export class UserController {
     type: 'string',
     name: 'friend_id',
   })
-  @Put('/add/:friend_id')
+  @Put('/friends/:friend_id')
   async addFriend(
     @Req() req: Request,
     @Param('friend_id') friend_id: ObjectId,
