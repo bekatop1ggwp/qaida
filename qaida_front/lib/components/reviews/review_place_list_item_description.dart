@@ -25,6 +25,93 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
     this.reviewComment,
   });
 
+  Future<void> _openReviewDialog(BuildContext context, int rating) async {
+    if (visitedId == null) return;
+
+    final commentController = TextEditingController();
+
+    final shouldSend = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text('Оставить отзыв'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RatingBarIndicator(
+                rating: rating.toDouble(),
+                itemBuilder: (context, _) => const Icon(
+                  Icons.star_rounded,
+                  color: Color(0xFFFFC542),
+                ),
+                unratedColor: const Color(0xFFC3CAD9),
+                itemCount: 5,
+                itemSize: 28,
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: commentController,
+                maxLines: 4,
+                maxLength: 300,
+                decoration: InputDecoration(
+                  hintText: 'Напишите отзыв, если хотите',
+                  filled: true,
+                  fillColor: const Color(0xFFF6F7FB),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6F4BB2),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Сохранить'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSend != true) return;
+
+    try {
+      await context.read<ReviewProvider>().sendRating(
+            visitedId!,
+            id,
+            rating,
+            comment: commentController.text,
+          );
+
+      await context.read<UserProvider>().fetchVisitedCount(silent: true);
+    } catch (e) {
+      if (kDebugMode) print(e);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось сохранить отзыв'),
+          ),
+        );
+      }
+    } finally {
+      commentController.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasSavedScore = (reviewScore ?? 0) > 0;
@@ -81,28 +168,8 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                   color: Color(0xFFFFC542),
                 ),
                 initialRating: 0,
-                onRatingUpdate: (double value) async {
-                  if (visitedId == null) return;
-
-                  try {
-                    await context
-                        .read<ReviewProvider>()
-                        .sendRating(visitedId!, id, value.toInt());
-
-                    await context
-                        .read<UserProvider>()
-                        .fetchVisitedCount(silent: true);
-                  } catch (e) {
-                    if (kDebugMode) print(e);
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Не удалось сохранить отзыв'),
-                        ),
-                      );
-                    }
-                  }
+                onRatingUpdate: (double value) {
+                  _openReviewDialog(context, value.toInt());
                 },
               ),
             ],
@@ -112,8 +179,10 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F3F9),
                   borderRadius: BorderRadius.circular(999),
@@ -138,15 +207,6 @@ class ReviewPlaceListItemDescription extends StatelessWidget {
                   unratedColor: const Color(0xFFC3CAD9),
                   itemCount: 5,
                   itemSize: 20,
-                ),
-              if (!hasSavedScore)
-                const Text(
-                  'Оценка сохранена',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF5B6478),
-                    fontWeight: FontWeight.w600,
-                  ),
                 ),
               if ((reviewComment ?? '').trim().isNotEmpty) ...[
                 const SizedBox(height: 5),

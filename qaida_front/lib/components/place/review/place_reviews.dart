@@ -8,13 +8,20 @@ import 'package:qaida/providers/theme.provider.dart';
 class PlaceReviews extends StatelessWidget {
   const PlaceReviews({super.key});
 
+  bool _hasComment(dynamic review) {
+    final comment = review['comment']?.toString().trim() ?? '';
+    return comment.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     final placeProvider = context.watch<PlaceProvider>();
 
-    final previewReviews = placeProvider.reviewsPreview.isNotEmpty
+    final allReviews = placeProvider.reviewsPreview.isNotEmpty
         ? placeProvider.reviewsPreview
         : placeProvider.reviews;
+
+    final reviewsWithText = allReviews.where(_hasComment).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,13 +35,13 @@ class PlaceReviews extends StatelessWidget {
         ),
         Container(
           color: context.watch<ThemeProvider>().lightWhite,
-          child: previewReviews.isEmpty
+          child: reviewsWithText.isEmpty
               ? const Padding(
                   padding: EdgeInsets.all(20),
                   child: QText(text: 'Пока нет отзывов'),
                 )
               : PlaceReviewItem(
-                  review: Map.from(previewReviews.first),
+                  review: Map.from(reviewsWithText.first),
                   preview: true,
                 ),
         ),

@@ -140,7 +140,12 @@ class ReviewProvider extends ChangeNotifier {
     ]);
   }
 
-  Future<void> sendRating(String visitedId, String placeId, int rating) async {
+Future<void> sendRating(
+    String visitedId,
+    String placeId,
+    int rating, {
+    String comment = '',
+  }) async {
     final token = await _getToken();
 
     final reviewResponse = await http.post(
@@ -151,7 +156,7 @@ class ReviewProvider extends ChangeNotifier {
       },
       body: json.encode({
         'place_id': placeId,
-        'comment': '',
+        'comment': comment.trim(),
         'score': rating,
       }),
     );
