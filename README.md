@@ -224,6 +224,11 @@ flutter pub get
 & "C:\android_studio\platform-tools\adb.exe" logcat -c; flutter run -d emulator-5554 --no-enable-impeller --dart-define=API_BASE_URL=http://10.0.2.2:8080 --dart-define=RECOMMENDATION_API_URL=http://10.0.2.2:8001
 ```
 
+Если вылетело:
+```powershell
+& "C:\android_studio\platform-tools\adb.exe" logcat -d | findstr /i "FATAL EXCEPTION AndroidRuntime com.aitu.qaida"
+```
+
 ```powershell
 & "C:\android_studio\platform-tools\adb.exe" kill-server
 & "C:\android_studio\platform-tools\adb.exe" start-server

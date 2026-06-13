@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qaida/components/place_card/place_card_image.dart';
@@ -30,9 +28,7 @@ class PlaceCard extends StatelessWidget {
   }
 
   String decode(String ogStr) {
-    if (!encoded) return ogStr;
-    final bytes = ogStr.codeUnits;
-    return utf8.decode(bytes);
+    return ogStr;
   }
 
   @override

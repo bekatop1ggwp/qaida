@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:qaida/core/api_config.dart';
 
+
 class CategoryProvider extends ChangeNotifier {
   static const String _baseUrl = ApiConfig.apiBaseUrl;
 
@@ -25,68 +26,6 @@ class CategoryProvider extends ChangeNotifier {
     return _placesByCategory.containsKey(categoryId);
   }
 
-  Future<void> getCategories() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/categories?q='),
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      categories = List.from(jsonDecode(response.body));
-      notifyListeners();
-      return;
-    }
-
-    throw Exception('Failed to load categories: ${response.statusCode}');
-  }
-
-  Future<List> getPlacesByCategories(String categoryId) async {
-    final response = await http.get(
-      Uri.parse(
-        '$_baseUrl/api/place/search-category?rubric_id=$categoryId',
-      ),
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return List.from(jsonDecode(response.body));
-    }
-
-    throw Exception(
-      'Failed to load places for category $categoryId: ${response.statusCode}',
-    );
-  }
-
-  Future<void> getTopPlaces() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/api/place/top'),
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      topPlaces = List.from(jsonDecode(response.body));
-      notifyListeners();
-      return;
-    }
-
-    throw Exception('Failed to load top places: ${response.statusCode}');
-  }
-
-  Future<void> _loadPlacesByCategoriesInBatches({
-    int batchSize = 4,
-  }) async {
-    for (int i = 0; i < categories.length; i += batchSize) {
-      final batch = categories.skip(i).take(batchSize);
-
-      await Future.wait(
-        batch.map((category) async {
-          final categoryId = category['_id'].toString();
-          final places = await getPlacesByCategories(categoryId);
-          _placesByCategory[categoryId] = places;
-        }),
-      );
-
-      notifyListeners();
-    }
-  }
-
   Future<void> loadCategoriesScreen({bool forceRefresh = false}) async {
     if (_isScreenLoading) return;
     if (_isInitialDataLoaded && !forceRefresh) return;
@@ -103,41 +42,56 @@ class CategoryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final results = await Future.wait([
-        http.get(Uri.parse('$_baseUrl/api/categories?q=')),
-        http.get(Uri.parse('$_baseUrl/api/place/top')),
-      ]);
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/place/catalog?previewLimit=6&topLimit=3'),
+      );
 
-      final categoriesResponse = results[0];
-      final topPlacesResponse = results[1];
-
-      if (categoriesResponse.statusCode < 200 ||
-          categoriesResponse.statusCode >= 300) {
-        throw Exception(
-          'Failed to load categories: ${categoriesResponse.statusCode}',
-        );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Catalog loading failed: ${response.statusCode}');
       }
 
-      if (topPlacesResponse.statusCode < 200 ||
-          topPlacesResponse.statusCode >= 300) {
-        throw Exception(
-          'Failed to load top places: ${topPlacesResponse.statusCode}',
-        );
-      }
+      final decoded = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      );
 
-      categories = List.from(jsonDecode(categoriesResponse.body));
-      topPlaces = List.from(jsonDecode(topPlacesResponse.body));
+      categories = List.from(decoded['categories'] ?? []);
+      topPlaces = List.from(decoded['topPlaces'] ?? []);
+
+      _placesByCategory.clear();
+
+      final rawPlacesByCategory = decoded['placesByCategory'] ?? {};
+
+      if (rawPlacesByCategory is Map) {
+        rawPlacesByCategory.forEach((key, value) {
+          _placesByCategory[key.toString()] = List.from(value ?? []);
+        });
+      }
 
       _isInitialDataLoaded = true;
-      _isScreenLoading = false;
-      notifyListeners();
-
-      await _loadPlacesByCategoriesInBatches(batchSize: 4);
     } catch (e) {
       debugPrint('loadCategoriesScreen error: $e');
+    } finally {
       _isScreenLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<Map<String, dynamic>> getCategoryPlacesPage({
+    required String rubricId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final response = await http.get(
+      Uri.parse(
+        '$_baseUrl/api/place/category-page?rubric_id=$rubricId&page=$page&limit=$limit',
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Category page loading failed: ${response.statusCode}');
+    }
+
+    return Map<String, dynamic>.from(jsonDecode(response.body));
   }
 
   Future<void> refreshCategoriesScreen() async {

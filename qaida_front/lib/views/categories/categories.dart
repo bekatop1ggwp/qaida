@@ -98,6 +98,7 @@ class _CategoriesState extends State<Categories> {
                 }
 
                 return CategoryPreview(
+                  categoryId: categoryId,
                   categoryName: category['name'],
                   places: provider.getPlacesForCategory(categoryId),
                 );

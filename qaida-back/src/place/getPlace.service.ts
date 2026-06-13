@@ -335,4 +335,152 @@ export class GetPlacesService {
 
     return await this.visit.insertMany(docsToCreate, { ordered: false });
   }
+
+  async getCatalog(previewLimit = 6, topLimit = 3): Promise<any> {
+    const safePreviewLimit = Math.max(1, Math.min(previewLimit, 10));
+    const safeTopLimit = Math.max(1, Math.min(topLimit, 10));
+
+    const [categories, topPlaces] = await Promise.all([
+      this.rubric
+        .find({})
+        .populate('category_ids')
+        .lean(),
+
+      this.getTopPopularPlaces(safeTopLimit),
+    ]);
+
+    const placesByCategory = {};
+
+    await Promise.all(
+      categories.map(async (category: any) => {
+        const categoryIds = (category.category_ids || []).map(
+          (item: any) => item?._id ?? item,
+        );
+
+        if (!categoryIds.length) {
+          placesByCategory[category._id.toString()] = [];
+          return;
+        }
+
+        const places = await this.place
+          .find({
+            category_id: { $in: categoryIds },
+          })
+          .sort({
+            score_2gis: -1,
+            title: 1,
+          })
+          .limit(safePreviewLimit)
+          .populate('category_id')
+          .lean();
+
+        placesByCategory[category._id.toString()] = places;
+      }),
+    );
+
+    return {
+      categories,
+      topPlaces,
+      placesByCategory,
+    };
+  }
+
+  async getPlacePaginated(
+    categoryId?: string,
+    rubricId?: string,
+    page = 1,
+    limit = 10,
+  ): Promise<any> {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, Math.min(limit, 30));
+    const skip = (safePage - 1) * safeLimit;
+
+    let query = {};
+
+    if (categoryId) {
+      query = {
+        category_id: {
+          $in: [categoryId],
+        },
+      };
+    } else if (rubricId) {
+      const rubric = await this.rubric.findOne(
+        { _id: rubricId },
+        { category_ids: 1 },
+      );
+
+      query = {
+        category_id: {
+          $in: rubric?.category_ids || [],
+        },
+      };
+    }
+
+    const [places, totalCount] = await Promise.all([
+      this.place
+        .find(query)
+        .sort({
+          score_2gis: -1,
+          title: 1,
+        })
+        .limit(safeLimit)
+        .skip(skip)
+        .populate('category_id')
+        .lean(),
+
+      this.place.countDocuments(query),
+    ]);
+
+    return {
+      page: safePage,
+      limit: safeLimit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / safeLimit),
+      places,
+    };
+  }
+
+  async getTopPopularPlaces(limit = 3) {
+    const safeLimit = Math.max(1, Math.min(limit, 10));
+
+    const places = await this.visit.aggregate([
+      {
+        $match: {
+          status: 'VISITED',
+        },
+      },
+      {
+        $group: {
+          _id: '$place_id',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          count: -1,
+        },
+      },
+      {
+        $limit: safeLimit,
+      },
+      {
+        $lookup: {
+          from: 'places',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'place',
+        },
+      },
+      {
+        $unwind: '$place',
+      },
+      {
+        $replaceRoot: {
+          newRoot: '$place',
+        },
+      },
+    ]);
+
+    return places;
+  }
 }

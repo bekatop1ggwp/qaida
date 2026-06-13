@@ -4,11 +4,13 @@ import 'package:qaida/components/place_card/place_card.dart';
 import 'package:qaida/views/categories/category_places.dart';
 
 class CategoryPreview extends StatelessWidget {
+  final String categoryId;
   final String categoryName;
   final List places;
 
   const CategoryPreview({
     super.key,
+    required this.categoryId,
     required this.categoryName,
     required this.places,
   });
@@ -18,8 +20,6 @@ class CategoryPreview extends StatelessWidget {
     if (places.isEmpty) {
       return const SizedBox.shrink();
     }
-
-    final previewPlaces = places.take(6).toList();
 
     return Column(
       children: [
@@ -40,8 +40,9 @@ class CategoryPreview extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => CategoryPlaces(
-                        places: places,
+                        rubricId: categoryId,
                         category: categoryName,
+                        initialPlaces: places,
                       ),
                     ),
                   );
@@ -58,7 +59,7 @@ class CategoryPreview extends StatelessWidget {
             childAspectRatio: 0.82,
             primary: false,
             children: [
-              for (final place in previewPlaces)
+              for (final place in places)
                 PlaceCard(place: Map.from(place)),
             ],
           ),

@@ -34,12 +34,13 @@ class _AuthorizedHomeState extends State<AuthorizedHome> {
     final places = recommendationProvider.places;
 
     if (!userProvider.hasMyself ||
+        userProvider.myself.id == null ||
         userProvider.myself.id.toString().isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.fromLTRB(8, 20, 8, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -84,16 +85,14 @@ class _AuthorizedHomeState extends State<AuthorizedHome> {
                   return Stack(
                     children: [
                       GridView.count(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.72,
-                        children: [
-                          for (var place in places)
-                            PlaceCard(place: place, encoded: true),
-                        ],
-                      ),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(8),
+                      crossAxisCount: 2,
+                      children: [
+                        for (var place in places)
+                          PlaceCard(place: Map.from(place)),
+                      ],
+                    ),
                       if (recommendationProvider.isLoading && places.isNotEmpty)
                         Positioned.fill(
                           child: IgnorePointer(

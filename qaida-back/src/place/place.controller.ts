@@ -192,4 +192,30 @@ export class PlaceController {
       page,
     );
   }
+
+  @Get('/catalog')
+  async getCatalog(
+    @Query('previewLimit') previewLimit?: string,
+    @Query('topLimit') topLimit?: string,
+  ): Promise<any> {
+    return await this.getPlaceService.getCatalog(
+      Number(previewLimit) || 6,
+      Number(topLimit) || 3,
+    );
+  }
+
+  @Get('/category-page')
+  async getCategoryPage(
+    @Query('rubric_id') rubricId?: string,
+    @Query('category_id') categoryId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<any> {
+    return await this.getPlaceService.getPlacePaginated(
+      categoryId,
+      rubricId,
+      Number(page) || 1,
+      Number(limit) || 10,
+    );
+  }
 }
