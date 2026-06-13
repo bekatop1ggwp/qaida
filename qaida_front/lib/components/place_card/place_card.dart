@@ -63,13 +63,15 @@ class PlaceCard extends StatelessWidget {
     if (reason == null) return;
 
     final type = reason['type'];
-    final accuracy = reason['accuracy'];
     final contentMatch = reason['contentMatch'];
     final behaviorSignal = reason['behaviorSignal'];
     final similarUsersCount = reason['similarUsersCount'];
     final rating = reason['rating'];
     final visitsCount = reason['visitsCount'];
     final text = reason['text']?.toString() ?? 'Место рекомендовано системой.';
+    final relevance = reason['relevance'] ?? reason['accuracy'];
+    final ratingScore = reason['ratingScore'];
+    final formula = reason['formula'];
 
     showModalBottomSheet(
       context: context,
@@ -93,8 +95,8 @@ class PlaceCard extends StatelessWidget {
                 Text(text, style: const TextStyle(fontSize: 14, height: 1.35)),
                 const SizedBox(height: 6),
                 if (type == 'personalized') ...[
-                  if (accuracy is num)
-                    _reasonRow('Итоговая релевантность', '${accuracy.round()}%'),
+                  if (relevance is num)
+                    _reasonRow('Итоговая релевантность', '${relevance.round()}%'),
                   if (contentMatch is num)
                     _reasonRow('Совпадение с интересами', '${contentMatch.round()}%'),
                   if (behaviorSignal is num)
@@ -103,6 +105,16 @@ class PlaceCard extends StatelessWidget {
                     _reasonRow('Похожие пользователи посещали', '${similarUsersCount.round()}'),
                   if (rating is num)
                     _reasonRow('Рейтинг места', '${rating.toStringAsFixed(1)} / 5'),
+                  if (ratingScore is num)
+                    _reasonRow('Рейтинговый фактор', '${ratingScore.round()}%'),
+                  if (formula != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        formula.toString(),
+                        style: const TextStyle(fontSize: 12, height: 1.35),
+                      ),
+                    ),
                 ] else ...[
                   if (visitsCount is num && visitsCount > 0)
                     _reasonRow('Посещений пользователями', '${visitsCount.round()}'),

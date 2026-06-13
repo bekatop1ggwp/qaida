@@ -264,9 +264,13 @@ def get_candidate_places_from_similar_users(similar_users, user_visited_places):
         for place_id, score in scores.items()
     }
 
-
 def _percent(value):
     return int(round(max(0.0, min(float(value), 1.0)) * 100))
+
+def _normalize_collaborative_score(value):
+    # collaborative_score может быть больше 1, поэтому переводим в диапазон 0..1
+    # 1.0 и выше считаем сильным поведенческим сигналом
+    return max(0.0, min(float(value), 1.0))
 
 def cosine_sim(a, b):
     a = np.array(a, dtype=float)
@@ -290,18 +294,33 @@ def rank_places(user_vector, candidate_scores):
         similar_users_count = int(candidate_data.get("similar_users_count", 0))
 
         content_score = cosine_sim(user_vector, place_data["vector"])
-        rating_value = place_data["score"]
-        rating_bonus = min(rating_value / 5.0, 1.0) * 0.1
+        rating_value = float(place_data["score"])
+        rating_score = max(0.0, min(rating_value / 5.0, 1.0))
+
+        behavior_score = _normalize_collaborative_score(collaborative_score)
+
+        relevance_score = (
+            0.7 * behavior_score +
+            0.2 * content_score +
+            0.1 * rating_score
+        )
+
+        # Для сортировки оставляем более сильную модельную формулу,
+        # а для отображения показываем нормализованную релевантность.
+        rating_bonus = rating_score * 0.1
         final_score = (0.7 * collaborative_score) + (0.3 * content_score) + rating_bonus
 
         reason = {
             "type": "personalized",
-            "accuracy": _percent(final_score),
+            "relevance": _percent(relevance_score),
+            "accuracy": _percent(relevance_score),
             "contentMatch": _percent(content_score),
-            "behaviorSignal": _percent(collaborative_score),
+            "behaviorSignal": _percent(behavior_score),
+            "ratingScore": _percent(rating_score),
             "similarUsersCount": similar_users_count,
             "rating": round(rating_value, 1),
-            "text": "Место рекомендовано на основе ваших интересов, рейтинга и истории посещений похожих пользователей.",
+            "formula": "0.7 × поведенческий сигнал + 0.2 × совпадение с интересами + 0.1 × рейтинг",
+            "text": "Место рекомендовано на основе нормализованной оценки: поведения похожих пользователей, совпадения с вашими интересами и рейтинга места.",
         }
 
         ranked.append({
